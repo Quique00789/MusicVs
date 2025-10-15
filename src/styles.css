@@ -1,0 +1,6 @@
+/* Import app styles (must come before other rules) */
+@import './app/app.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

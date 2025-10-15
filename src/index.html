@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MusicVS</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="manifest" href="./manifest.json">
+  <!-- AOS (Animate On Scroll) -->
+  <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
+  <script>
+    (async function() {
+      if ('serviceWorker' in navigator) {
+        try {
+          // Try to fetch the service-worker script first to avoid 404 in dev
+          const res = await fetch('/service-worker.js', { method: 'HEAD' });
+          if (res.ok) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+  <script>
+    // Init AOS when Angular bootstraps. Keep safe check if AOS loaded.
+    window.addEventListener('load', function() {
+      if (window.AOS) AOS.init({ duration: 900, once: false, mirror: false });
+    });
+  </script>
+</body>
+</html>

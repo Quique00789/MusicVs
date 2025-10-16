@@ -12,7 +12,7 @@ export const environment = {
     
     // 📁 Nombre del bucket donde están las canciones en Supabase Storage
     // Por defecto: 'songs' (ajusta según tu bucket)
-    storageBucket: 'songs'
+    storageBucket: 'MusicVs'
   }
 };
 

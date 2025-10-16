@@ -33,6 +33,7 @@ export class App implements OnInit, OnDestroy {
   progress: any;
   currentTime: any;
   duration: any;
+  volume: any;
   // Exponer signals del servicio para el template
   constructor(private audioPlayerService: AudioPlayerService) {}
 
@@ -44,6 +45,7 @@ export class App implements OnInit, OnDestroy {
     this.progress = this.audioPlayerService.progress;
     this.currentTime = this.audioPlayerService.currentTime;
     this.duration = this.audioPlayerService.duration;
+    this.volume = this.audioPlayerService.volume;
   }
 
   ngOnDestroy() {
@@ -126,6 +128,26 @@ export class App implements OnInit, OnDestroy {
    */
   seek(percent: number) {
     this.audioPlayerService.seek(percent);
+  }
+
+  onSetVolume(v: number) {
+    this.audioPlayerService.setVolume(v);
+  }
+
+  onSetPlaybackRate(r: number) {
+    this.audioPlayerService.setPlaybackRate(r);
+  }
+
+  onToggleMute() {
+    this.audioPlayerService.toggleMute();
+  }
+
+  get formattedCurrentTime() {
+    return this.audioPlayerService.formattedCurrentTime();
+  }
+
+  playbackRate() {
+    return this.audioPlayerService.playbackRate();
   }
 
   /**

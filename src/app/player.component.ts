@@ -24,10 +24,25 @@ import { Song } from './models/song';
         </div>
 
         <div class="flex items-center gap-4">
-          <div class="w-56 h-2 bg-white/10 rounded-full relative">
-            <div class="absolute top-0 left-0 h-2 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full" [style.width.%]="progress"></div>
-          </div>
-          <div class="text-gray-400 text-sm">{{ currentSong.duration }}</div>
+          <!-- Seek -->
+          <input type="range" class="w-72" min="0" max="100" [value]="progress" (input)="onSeek($event)" />
+          <div class="text-gray-400 text-sm">{{ formattedCurrentTime }} / {{ currentSong.duration }}</div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Volume -->
+          <button (click)="toggleMute.emit()" class="p-2">🔊</button>
+          <input type="range" min="0" max="1" step="0.01" [value]="volume" (input)="onVolume($event)" class="w-28" />
+
+          <!-- Playback rate -->
+          <select [value]="playbackRate" (change)="onRate($event)" class="bg-transparent text-sm text-gray-300 p-1 rounded">
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1">1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
         </div>
       </div>
     </div>
@@ -37,7 +52,29 @@ export class PlayerComponent {
   @Input() currentSong: Song | null = null;
   @Input() isPlaying = false;
   @Input() progress = 0;
+  @Input() volume = 1;
+  @Input() playbackRate = 1;
+  @Input() formattedCurrentTime = '0:00';
   @Output() playPause = new EventEmitter<void>();
   @Output() next = new EventEmitter<void>();
   @Output() prev = new EventEmitter<void>();
+  @Output() seek = new EventEmitter<number>();
+  @Output() setVolume = new EventEmitter<number>();
+  @Output() setPlaybackRate = new EventEmitter<number>();
+  @Output() toggleMute = new EventEmitter<void>();
+
+  onSeek(e: any) {
+    const val = Number(e.target.value);
+    this.seek.emit(val);
+  }
+
+  onVolume(e: any) {
+    const v = Number(e.target.value);
+    this.setVolume.emit(v);
+  }
+
+  onRate(e: any) {
+    const r = Number(e.target.value);
+    this.setPlaybackRate.emit(r);
+  }
 }

@@ -17,6 +17,7 @@ export class AudioPlayerService {
   duration = signal(0);
   volume = signal(1);
   isMuted = signal(false);
+  playbackRate = signal(1);
 
   // Computed signals
   formattedCurrentTime = computed(() => this.formatTime(this.currentTime()));
@@ -44,7 +45,13 @@ export class AudioPlayerService {
     });
 
     this.audio.addEventListener('loadedmetadata', () => {
-      this.duration.set(this.audio?.duration || 0);
+      const dur = this.audio?.duration || 0;
+      this.duration.set(dur);
+      // update currentSong duration so UI list can show real length
+      const cs = this.currentSong();
+      if (cs) {
+        this.currentSong.set({ ...cs, duration: this.formatTime(dur) });
+      }
       this.isLoading.set(false);
     });
 
@@ -190,6 +197,19 @@ export class AudioPlayerService {
     } else if (this.isMuted()) {
       this.isMuted.set(false);
     }
+  }
+
+  /**
+   * Ajusta la velocidad de reproducción
+   * @param rate - velocidad (ej: 0.5, 1, 1.5, 2)
+   */
+  setPlaybackRate(rate: number) {
+    if (!this.audio) return;
+    const r = Math.max(0.25, Math.min(3, rate));
+    try {
+      this.audio.playbackRate = r;
+      this.playbackRate.set(r);
+    } catch {}
   }
 
   /**

@@ -8,14 +8,9 @@ export const songs: Song[] = [
     artist: 'DJ Valls',
     cover: 'https://images.pexels.com/photos/1699161/pexels-photo-1699161.jpeg',
     album: 'Demo album',
-    duration: '3:53',
-    
-    // 📁 AJUSTA estas rutas según la estructura de tu bucket en Supabase
-    // Ejemplo: si tu archivo está en: bucket 'songs' -> carpeta 'music' -> 'shape-of-you.mp3'
-    // Entonces: audioPath: 'music/shape-of-you.mp3'
-    audioPath: 'Demo.mp3', // Cambia según tu estructura
-    
-    requiresSignedUrl: false // false = URL pública, true = URL firmada
+    duration: '1:06',
+    audioPath: 'Demo.mp3',
+    requiresSignedUrl: false
   },
   {
     id: '2',
@@ -23,8 +18,8 @@ export const songs: Song[] = [
     artist: 'DJ Valls',
     cover: 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg',
     album: 'Demo album',
-    duration: '3:20',
-    audioPath: 'Demo2.mp3', // 📁 Ajusta según tu bucket
+    duration: '1:07',
+    audioPath: 'Demo2.mp3',
     requiresSignedUrl: false
   },
   {
@@ -33,8 +28,8 @@ export const songs: Song[] = [
     artist: 'DJ Valls',
     cover: 'https://images.pexels.com/photos/1916824/pexels-photo-1916824.jpeg',
     album: 'Demo album',
-    duration: '3:23',
-    audioPath: 'Demo3.mp3', // 📁 Ajusta según tu bucket
+    duration: '1:05',
+    audioPath: 'Demo3.mp3',
     requiresSignedUrl: false
   }
 ];

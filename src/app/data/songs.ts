@@ -4,10 +4,10 @@ import { Song } from '../models/song';
 export const songs: Song[] = [
   {
     id: '1',
-    title: 'Shape of You',
-    artist: 'Ed Sheeran',
+    title: 'Demo',
+    artist: 'DJ Valls',
     cover: 'https://images.pexels.com/photos/1699161/pexels-photo-1699161.jpeg',
-    album: '÷ (Divide)',
+    album: 'Demo album',
     duration: '3:53',
     
     // 📁 AJUSTA estas rutas según la estructura de tu bucket en Supabase
@@ -19,20 +19,20 @@ export const songs: Song[] = [
   },
   {
     id: '2',
-    title: 'Blinding Lights',
-    artist: 'The Weeknd',
+    title: 'Demo2',
+    artist: 'DJ Valls',
     cover: 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg',
-    album: 'After Hours',
+    album: 'Demo album',
     duration: '3:20',
     audioPath: 'Demo2.mp3', // 📁 Ajusta según tu bucket
     requiresSignedUrl: false
   },
   {
     id: '3',
-    title: 'Levitating',
-    artist: 'Dua Lipa',
+    title: 'Demo3',
+    artist: 'DJ Valls',
     cover: 'https://images.pexels.com/photos/1916824/pexels-photo-1916824.jpeg',
-    album: 'Future Nostalgia',
+    album: 'Demo album',
     duration: '3:23',
     audioPath: 'Demo3.mp3', // 📁 Ajusta según tu bucket
     requiresSignedUrl: false

@@ -1,3 +1,4 @@
+// Load Zone.js (ESM fesm bundle). This is the supported import for recent Zone.js versions.
 import 'zone.js';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';

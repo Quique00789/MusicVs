@@ -1,3 +1,6 @@
+// Ensure Zone.js is loaded on the server for Angular's NgZone (SSR).
+import 'zone.js/node';
+
 import {
   AngularNodeAppEngine,
   createNodeRequestHandler,

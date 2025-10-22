@@ -16,6 +16,101 @@ export class SupabaseService {
     );
   }
 
+  // Expose the raw Supabase client for low-level operations when needed
+  getClient(): SupabaseClient {
+    return this.supabase;
+  }
+
+  // Helper to get current user (SDK versions differ; use any-cast)
+  async getCurrentUser() {
+    try {
+      const authAny = (this.supabase.auth as any);
+      if (typeof authAny.getUser === 'function') {
+        const res = await authAny.getUser();
+        return res?.data?.user ?? null;
+      }
+      if (typeof authAny.getSession === 'function') {
+        const sess = await authAny.getSession();
+        return sess?.data?.session?.user ?? null;
+      }
+    } catch (e) {
+      console.warn('Error getting current user:', e);
+    }
+    return null;
+  }
+
+  /* ----------------------- Authentication helpers ----------------------- */
+
+  /** Sign up with email + password */
+  async signUpWithEmail(email: string, password: string) {
+    const { data, error } = await this.supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
+  }
+
+  /** Sign in with email + password */
+  async signInWithEmail(email: string, password: string) {
+    const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  }
+
+  /** Sign in (redirect) with Google OAuth */
+  async signInWithGoogle(redirectTo?: string) {
+    // If you want to redirect after OAuth use redirectTo; otherwise Supabase will open a popup when available
+    const options: any = {};
+    if (redirectTo) options.redirectTo = redirectTo;
+    const { data, error } = await this.supabase.auth.signInWithOAuth({ provider: 'google', options });
+    if (error) throw error;
+    return data;
+  }
+
+  /** Sign out with enhanced error handling and cleanup */
+  async signOut() {
+    try {
+      console.log('Attempting to sign out from Supabase...');
+      const { error } = await this.supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        throw error;
+      }
+      
+      console.log('Successfully signed out from Supabase');
+      return true;
+    } catch (error) {
+      console.error('Error during signOut:', error);
+      // Re-throw the error so calling code can handle it
+      throw error;
+    }
+  }
+
+  /** Get current session */
+  async getSession() {
+    try {
+      const { data, error } = await this.supabase.auth.getSession();
+      if (error) throw error;
+      return data.session;
+    } catch (e) {
+      console.warn('Error getting session:', e);
+      return null;
+    }
+  }
+
+  /** Refresh the current session */
+  async refreshSession() {
+    try {
+      const { data, error } = await this.supabase.auth.refreshSession();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn('Error refreshing session:', e);
+      throw e;
+    }
+  }
+
+  /* ----------------------- Storage helpers ----------------------- */
+
   /**
    * Obtiene la URL pública de un archivo de audio en Supabase Storage
    * @param filePath - Ruta del archivo en el bucket (ej: 'songs/shape-of-you.mp3')

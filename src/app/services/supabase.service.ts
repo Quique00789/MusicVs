@@ -34,7 +34,7 @@ export class SupabaseService {
         return sess?.data?.session?.user ?? null;
       }
     } catch (e) {
-      // ignore
+      console.warn('Error getting current user:', e);
     }
     return null;
   }
@@ -65,13 +65,51 @@ export class SupabaseService {
     return data;
   }
 
-  /** Sign out */
+  /** Sign out with enhanced error handling and cleanup */
   async signOut() {
-    const { error } = await this.supabase.auth.signOut();
-    if (error) throw error;
-    return true;
+    try {
+      console.log('Attempting to sign out from Supabase...');
+      const { error } = await this.supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        throw error;
+      }
+      
+      console.log('Successfully signed out from Supabase');
+      return true;
+    } catch (error) {
+      console.error('Error during signOut:', error);
+      // Re-throw the error so calling code can handle it
+      throw error;
+    }
   }
 
+  /** Get current session */
+  async getSession() {
+    try {
+      const { data, error } = await this.supabase.auth.getSession();
+      if (error) throw error;
+      return data.session;
+    } catch (e) {
+      console.warn('Error getting session:', e);
+      return null;
+    }
+  }
+
+  /** Refresh the current session */
+  async refreshSession() {
+    try {
+      const { data, error } = await this.supabase.auth.refreshSession();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn('Error refreshing session:', e);
+      throw e;
+    }
+  }
+
+  /* ----------------------- Storage helpers ----------------------- */
 
   /**
    * Obtiene la URL pública de un archivo de audio en Supabase Storage

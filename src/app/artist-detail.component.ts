@@ -150,8 +150,8 @@ export class ArtistDetailComponent implements OnInit {
   
   ngOnInit() {
     this.route.params.subscribe(params => {
-      const artistId = params['id'];
-      this.artist = this.artistService.getArtistById(artistId);
+  const artistId = params['id'];
+  this.artist = this.artistService.getArtistById(artistId) ?? null;
     });
   }
   

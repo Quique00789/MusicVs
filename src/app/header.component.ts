@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthStateService } from './services/auth-state.service';
@@ -116,20 +116,36 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   constructor(
     private authState: AuthStateService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit() {
-    this.unsub = this.authState.subscribe((u) => { 
-      this.user = u; 
-      if (!u) {
-        this.isUserMenuOpen = false;
-      }
+    console.log('Header component initializing...');
+    
+    this.unsub = this.authState.subscribe((u) => {
+      console.log('Header received user update:', u?.id || 'none', u?.email || 'no email');
+      
+      // Ensure we're in Angular zone for proper change detection
+      this.ngZone.run(() => {
+        this.user = u;
+        if (!u) {
+          this.isUserMenuOpen = false;
+        }
+        
+        // Force change detection
+        this.cdr.detectChanges();
+        
+        console.log('Header UI updated with user:', this.user?.email || 'none');
+      });
     });
   }
 
   ngOnDestroy() {
-    if (this.unsub) this.unsub();
+    if (this.unsub) {
+      this.unsub();
+    }
   }
 
   get userName(): string {
@@ -163,6 +179,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   toggleUserMenu() {
     this.isUserMenuOpen = !this.isUserMenuOpen;
+    this.cdr.detectChanges();
   }
 
   @HostListener('document:click', ['$event'])
@@ -170,6 +187,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     const target = event.target as HTMLElement;
     if (!target.closest('.relative')) {
       this.isUserMenuOpen = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -179,12 +197,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   async logout() {
     this.isUserMenuOpen = false;
+    this.cdr.detectChanges();
+    
     try {
+      console.log('Header: starting logout process...');
       await this.authState.signOut();
+      
+      console.log('Header: logout successful, redirecting...');
       // Redirect to home after logout
       await this.router.navigate(['/']);
     } catch (error) {
-      console.error('Error durante el logout:', error);
+      console.error('Header: error during logout:', error);
     }
   }
 }

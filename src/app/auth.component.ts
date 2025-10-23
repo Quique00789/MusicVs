@@ -1,7 +1,8 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from './services/supabase.service';
+import { AuthStateService } from './services/auth-state.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -22,8 +23,7 @@ import { Router } from '@angular/router';
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span *ngIf="!isGoogleLoading">Continuar con Google</span>
-            <span *ngIf="isGoogleLoading">Conectando...</span>
+            <span>{{ isGoogleLoading ? 'Conectando...' : 'Continuar con Google' }}</span>
           </button>
         </div>
 
@@ -36,7 +36,7 @@ import { Router } from '@angular/router';
           </div>
         </div>
 
-        <form (ngSubmit)="onSubmit($event)">
+        <form (ngSubmit)="onSubmit($event)" #authForm="ngForm">
           <div class="mb-4">
             <label class="block text-sm text-gray-300 mb-1">Correo electrónico</label>
             <input 
@@ -69,7 +69,7 @@ import { Router } from '@angular/router';
           <div class="flex gap-2 mb-4">
             <button 
               type="button"
-              (click)="onSignIn($event)" 
+              (click)="onSignIn()" 
               [disabled]="isLoading || !isFormValid()"
               class="flex-1 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-semibold transition-colors flex items-center justify-center gap-2">
               <svg *ngIf="isSignInLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -80,7 +80,7 @@ import { Router } from '@angular/router';
             </button>
             <button 
               type="button"
-              (click)="onSignUp($event)" 
+              (click)="onSignUp()" 
               [disabled]="isLoading || !isFormValid()"
               class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-semibold transition-colors flex items-center justify-center gap-2">
               <svg *ngIf="isSignUpLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -91,20 +91,6 @@ import { Router } from '@angular/router';
             </button>
           </div>
         </form>
-
-        <!-- Resend Confirmation Email Button -->
-        <div *ngIf="showResendButton" class="mb-4">
-          <button 
-            (click)="onResendConfirmation()" 
-            [disabled]="isResending"
-            class="w-full py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-medium transition-colors flex items-center justify-center gap-2">
-            <svg *ngIf="isResending" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>{{ isResending ? 'Reenviando...' : 'Reenviar correo de confirmación' }}</span>
-          </button>
-        </div>
 
         <!-- Success Message -->
         <div *ngIf="successMessage" class="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded text-green-400 text-sm">
@@ -123,15 +109,6 @@ import { Router } from '@angular/router';
             <span>{{ error }}</span>
           </div>
         </div>
-
-        <!-- Info Message -->
-        <div *ngIf="infoMessage" class="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded text-blue-400 text-sm">
-          <div class="flex items-start gap-2">
-            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
-            <span>{{ infoMessage }}</span>
-          </div>
-        </div>
       </div>
     </div>
   `
@@ -141,21 +118,18 @@ export class AuthComponent {
   password = '';
   error: string | null = null;
   successMessage: string | null = null;
-  infoMessage: string | null = null;
   
   isLoading = false;
   isSignInLoading = false;
   isSignUpLoading = false;
   isGoogleLoading = false;
-  isResending = false;
-  
-  showResendButton = false;
-  pendingConfirmationEmail = '';
 
   constructor(
     private supabase: SupabaseService,
+    private authState: AuthStateService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {}
 
   isFormValid(): boolean {
@@ -168,16 +142,16 @@ export class AuthComponent {
   private clearMessages() {
     this.error = null;
     this.successMessage = null;
-    this.infoMessage = null;
   }
 
   private resetLoadingStates() {
-    this.isLoading = false;
-    this.isSignInLoading = false;
-    this.isSignUpLoading = false;
-    this.isGoogleLoading = false;
-    this.isResending = false;
-    this.cdr.detectChanges();
+    this.ngZone.run(() => {
+      this.isLoading = false;
+      this.isSignInLoading = false;
+      this.isSignUpLoading = false;
+      this.isGoogleLoading = false;
+      this.cdr.detectChanges();
+    });
   }
 
   private handleError(err: any): string {
@@ -187,11 +161,6 @@ export class AuthComponent {
       // Handle specific Supabase errors
       if (err.message.includes('Invalid login credentials')) {
         return 'Credenciales inválidas. Verifica tu correo y contraseña.';
-      }
-      if (err.message.includes('Email not confirmed')) {
-        this.showResendButton = true;
-        this.pendingConfirmationEmail = this.email;
-        return 'Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada o reenvía el correo de confirmación.';
       }
       if (err.message.includes('User already registered')) {
         return 'Este correo ya está registrado. Intenta iniciar sesión en su lugar.';
@@ -204,9 +173,6 @@ export class AuthComponent {
       }
       if (err.message.includes('signup disabled')) {
         return 'El registro está temporalmente deshabilitado. Intenta más tarde.';
-      }
-      if (err.message.includes('email rate limit')) {
-        return 'Has solicitado demasiados correos. Espera unos minutos antes de intentar nuevamente.';
       }
       return err.message;
     }
@@ -234,10 +200,8 @@ export class AuthComponent {
     // This prevents the default form submission
   }
 
-  async onSignIn(e: Event) {
-    e.preventDefault();
-    
-    if (!this.isFormValid()) {
+  async onSignIn() {
+    if (this.isLoading || !this.isFormValid()) {
       this.error = 'Por favor completa todos los campos correctamente.';
       return;
     }
@@ -245,96 +209,82 @@ export class AuthComponent {
     this.clearMessages();
     this.isSignInLoading = true;
     this.isLoading = true;
-    this.showResendButton = false;
     
     try {
+      console.log('Starting sign in process...');
+      
       const result = await this.supabase.signInWithEmail(this.email.trim(), this.password);
       
       if (result.user && result.session) {
-        this.successMessage = '¡Inicio de sesión exitoso! Redirigiendo...';
+        console.log('Sign in successful, updating auth state...');
         
-        // Small delay to show success message
+        // Force refresh auth state to update header immediately
+        await this.authState.refreshUserState();
+        
+        this.ngZone.run(() => {
+          this.successMessage = '¡Inicio de sesión exitoso! Redirigiendo...';
+          this.cdr.detectChanges();
+        });
+        
+        // Redirect after a short delay
         setTimeout(() => {
-          this.router.navigate(['/']);
-        }, 1500);
+          this.ngZone.run(() => {
+            this.router.navigate(['/']);
+          });
+        }, 1000);
       } else {
-        this.error = 'No se pudo iniciar sesión. Intenta nuevamente.';
-        this.resetLoadingStates();
+        throw new Error('No se pudo iniciar sesión');
       }
     } catch (err: any) {
-      this.error = this.handleError(err);
-      this.resetLoadingStates();
+      console.error('Sign in error:', err);
+      this.ngZone.run(() => {
+        this.error = this.handleError(err);
+        this.resetLoadingStates();
+      });
     }
   }
 
-  async onSignUp(e: Event) {
-    e.preventDefault();
-    
-    if (!this.isFormValid()) {
-      this.error = 'Por favor completa todos los campos correctamente. El correo debe tener un formato válido y la contraseña mínimo 6 caracteres.';
+  async onSignUp() {
+    if (this.isLoading || !this.isFormValid()) {
+      this.error = 'Por favor completa todos los campos correctamente.';
       return;
     }
     
     this.clearMessages();
     this.isSignUpLoading = true;
     this.isLoading = true;
-    this.showResendButton = false;
     
     try {
-      console.log('Attempting to sign up with:', { email: this.email.trim() });
+      console.log('Starting sign up process...');
       
       const result = await this.supabase.signUpWithEmail(this.email.trim(), this.password);
       
-      console.log('SignUp result:', {
-        user: result.user?.id,
-        email: result.user?.email,
-        emailConfirmed: result.user?.email_confirmed_at,
-        session: !!result.session
-      });
-      
       if (result.user) {
-        if (result.user.email_confirmed_at) {
-          // User is immediately confirmed (happens in development or if email confirmation is disabled)
-          this.successMessage = '¡Registro exitoso! Tu cuenta ha sido activada. Redirigiendo...';
-          setTimeout(() => {
+        console.log('Sign up successful, updating auth state...');
+        
+        // Force refresh auth state to update header immediately
+        await this.authState.refreshUserState();
+        
+        this.ngZone.run(() => {
+          this.successMessage = '¡Registro exitoso! Tu cuenta ha sido creada. Redirigiendo...';
+          this.cdr.detectChanges();
+        });
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          this.ngZone.run(() => {
             this.router.navigate(['/']);
-          }, 2000);
-        } else {
-          // User needs email confirmation
-          this.successMessage = '¡Registro exitoso! Te hemos enviado un correo de confirmación. Por favor revisa tu bandeja de entrada (incluye la carpeta de spam).';
-          this.infoMessage = 'Una vez que confirmes tu correo, podrás iniciar sesión normalmente.';
-          this.showResendButton = true;
-          this.pendingConfirmationEmail = this.email.trim();
-          this.resetLoadingStates();
-        }
+          });
+        }, 1500);
       } else {
-        this.error = 'No se pudo crear la cuenta. Intenta nuevamente.';
-        this.resetLoadingStates();
+        throw new Error('No se pudo crear la cuenta');
       }
     } catch (err: any) {
-      console.error('SignUp error details:', err);
-      this.error = this.handleError(err);
-      this.resetLoadingStates();
-    }
-  }
-
-  async onResendConfirmation() {
-    if (!this.pendingConfirmationEmail) {
-      this.error = 'No hay correo pendiente de confirmación.';
-      return;
-    }
-    
-    this.clearMessages();
-    this.isResending = true;
-    
-    try {
-      await this.supabase.resendConfirmationEmail(this.pendingConfirmationEmail);
-      this.successMessage = 'Correo de confirmación reenviado exitosamente. Revisa tu bandeja de entrada.';
-    } catch (err: any) {
-      this.error = this.handleError(err);
-    } finally {
-      this.isResending = false;
-      this.cdr.detectChanges();
+      console.error('Sign up error:', err);
+      this.ngZone.run(() => {
+        this.error = this.handleError(err);
+        this.resetLoadingStates();
+      });
     }
   }
 }

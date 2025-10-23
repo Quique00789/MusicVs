@@ -23,7 +23,7 @@ import { AuthStateService } from './services/auth-state.service';
         <nav class="hidden md:flex items-center gap-8">
           <a href="#discover" class="text-gray-300 hover:text-white transition-colors">Discover</a>
           <a href="#playlists" class="text-gray-300 hover:text-white transition-colors">Playlists</a>
-          <a href="#artists" class="text-gray-300 hover:text-white transition-colors">Artists</a>
+          <button (click)="goToArtists()" class="text-gray-300 hover:text-white transition-colors">Artists</button>
         </nav>
 
         <div class="flex items-center gap-4 relative">
@@ -193,6 +193,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   goHome() {
     this.router.navigate(['/']);
+  }
+
+  goToArtists() {
+    this.router.navigate(['/artists']);
   }
 
   async logout() {

@@ -1,5 +1,5 @@
 // src/app/services/supabase.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 
@@ -9,10 +9,21 @@ import { environment } from '../../environments/environment';
 export class SupabaseService {
   private supabase: SupabaseClient;
 
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
+  constructor(private ngZone: NgZone) {
+    // Initialize Supabase client outside Angular zone to prevent infinite loading
+    this.supabase = this.ngZone.runOutsideAngular(() => 
+      createClient(
+        environment.supabase.url,
+        environment.supabase.anonKey,
+        {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            flowType: 'pkce'
+          }
+        }
+      )
     );
   }
 
@@ -21,55 +32,131 @@ export class SupabaseService {
     return this.supabase;
   }
 
-  // Helper to get current user (SDK versions differ; use any-cast)
+  // Helper to get current user with proper error handling
   async getCurrentUser() {
     try {
-      const authAny = (this.supabase.auth as any);
-      if (typeof authAny.getUser === 'function') {
-        const res = await authAny.getUser();
-        return res?.data?.user ?? null;
+      const { data, error } = await this.supabase.auth.getUser();
+      if (error) {
+        console.warn('Error getting current user:', error);
+        return null;
       }
-      if (typeof authAny.getSession === 'function') {
-        const sess = await authAny.getSession();
-        return sess?.data?.session?.user ?? null;
-      }
+      return data?.user ?? null;
     } catch (e) {
       console.warn('Error getting current user:', e);
+      return null;
     }
-    return null;
   }
 
   /* ----------------------- Authentication helpers ----------------------- */
 
-  /** Sign up with email + password */
+  /** Sign up with email + password with proper error handling */
   async signUpWithEmail(email: string, password: string) {
-    const { data, error } = await this.supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await this.supabase.auth.signUp({ 
+        email: email.trim().toLowerCase(), 
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        console.error('SignUp error:', error);
+        throw error;
+      }
+      
+      console.log('SignUp successful:', { 
+        user: data.user?.id, 
+        email: data.user?.email,
+        emailConfirmed: data.user?.email_confirmed_at 
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('SignUp error:', error);
+      throw error;
+    }
   }
 
-  /** Sign in with email + password */
+  /** Sign in with email + password with improved error handling */
   async signInWithEmail(email: string, password: string) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await this.supabase.auth.signInWithPassword({ 
+        email: email.trim().toLowerCase(), 
+        password 
+      });
+      
+      if (error) {
+        console.error('SignIn error:', error);
+        throw error;
+      }
+      
+      console.log('SignIn successful:', { 
+        user: data.user?.id, 
+        email: data.user?.email,
+        session: !!data.session 
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('SignIn error:', error);
+      throw error;
+    }
+  }
+
+  /** Resend confirmation email */
+  async resendConfirmationEmail(email: string) {
+    try {
+      const { error } = await this.supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        console.error('Resend confirmation error:', error);
+        throw error;
+      }
+      
+      console.log('Confirmation email resent successfully');
+      return true;
+    } catch (error) {
+      console.error('Resend confirmation error:', error);
+      throw error;
+    }
   }
 
   /** Sign in (redirect) with Google OAuth */
   async signInWithGoogle(redirectTo?: string) {
-    // If you want to redirect after OAuth use redirectTo; otherwise Supabase will open a popup when available
-    const options: any = {};
-    if (redirectTo) options.redirectTo = redirectTo;
-    const { data, error } = await this.supabase.auth.signInWithOAuth({ provider: 'google', options });
-    if (error) throw error;
-    return data;
+    try {
+      const options: any = {
+        redirectTo: redirectTo || `${window.location.origin}/auth/callback`
+      };
+      
+      const { data, error } = await this.supabase.auth.signInWithOAuth({ 
+        provider: 'google', 
+        options 
+      });
+      
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Google OAuth error:', error);
+      throw error;
+    }
   }
 
   /** Sign out with enhanced error handling and cleanup */
   async signOut() {
     try {
       console.log('Attempting to sign out from Supabase...');
-      const { error } = await this.supabase.auth.signOut();
+      const { error } = await this.supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
         console.error('Supabase signOut error:', error);
@@ -89,7 +176,10 @@ export class SupabaseService {
   async getSession() {
     try {
       const { data, error } = await this.supabase.auth.getSession();
-      if (error) throw error;
+      if (error) {
+        console.warn('Error getting session:', error);
+        return null;
+      }
       return data.session;
     } catch (e) {
       console.warn('Error getting session:', e);
@@ -101,7 +191,10 @@ export class SupabaseService {
   async refreshSession() {
     try {
       const { data, error } = await this.supabase.auth.refreshSession();
-      if (error) throw error;
+      if (error) {
+        console.warn('Error refreshing session:', error);
+        throw error;
+      }
       return data;
     } catch (e) {
       console.warn('Error refreshing session:', e);

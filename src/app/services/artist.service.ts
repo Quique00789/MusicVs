@@ -20,7 +20,7 @@ Along the way, I've grown a lot as a producer, met incredible people, and learne
 
 Thank you for being part of my journey ;D.`,
       shortBio: 'Electronic music producer from Mexico specializing in Hands Up, Happy Hardcore, Techno Trance, and Hardstyle. Creating unforgettable remixes and original tracks.',
-      profileImage: '', // Se puede agregar una URL de imagen más tarde
+      profileImage: '/images/dj-valls-profile.jpg', // Ruta a la imagen de perfil
       genres: ['Hands Up', 'Happy Hardcore', 'Techno Trance', 'Hardstyle'],
       country: 'Mexico',
       socialLinks: [

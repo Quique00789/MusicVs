@@ -19,8 +19,8 @@ export class SupabaseService {
           auth: {
             autoRefreshToken: true,
             persistSession: true,
-            detectSessionInUrl: true,
-            flowType: 'pkce'
+            detectSessionInUrl: false, // Disabled to prevent issues
+            flowType: 'implicit' // Changed from PKCE to implicit for simplicity
           }
         }
       )
@@ -49,15 +49,13 @@ export class SupabaseService {
 
   /* ----------------------- Authentication helpers ----------------------- */
 
-  /** Sign up with email + password with proper error handling */
+  /** Sign up with email + password - NO EMAIL CONFIRMATION REQUIRED */
   async signUpWithEmail(email: string, password: string) {
     try {
       const { data, error } = await this.supabase.auth.signUp({ 
         email: email.trim().toLowerCase(), 
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
+        password
+        // Removed emailRedirectTo to disable email confirmation
       });
       
       if (error) {
@@ -68,7 +66,7 @@ export class SupabaseService {
       console.log('SignUp successful:', { 
         user: data.user?.id, 
         email: data.user?.email,
-        emailConfirmed: data.user?.email_confirmed_at 
+        session: !!data.session
       });
       
       return data;
@@ -78,7 +76,7 @@ export class SupabaseService {
     }
   }
 
-  /** Sign in with email + password with improved error handling */
+  /** Sign in with email + password */
   async signInWithEmail(email: string, password: string) {
     try {
       const { data, error } = await this.supabase.auth.signInWithPassword({ 
@@ -104,35 +102,11 @@ export class SupabaseService {
     }
   }
 
-  /** Resend confirmation email */
-  async resendConfirmationEmail(email: string) {
-    try {
-      const { error } = await this.supabase.auth.resend({
-        type: 'signup',
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('Resend confirmation error:', error);
-        throw error;
-      }
-      
-      console.log('Confirmation email resent successfully');
-      return true;
-    } catch (error) {
-      console.error('Resend confirmation error:', error);
-      throw error;
-    }
-  }
-
   /** Sign in (redirect) with Google OAuth */
   async signInWithGoogle(redirectTo?: string) {
     try {
       const options: any = {
-        redirectTo: redirectTo || `${window.location.origin}/auth/callback`
+        redirectTo: redirectTo || window.location.origin
       };
       
       const { data, error } = await this.supabase.auth.signInWithOAuth({ 

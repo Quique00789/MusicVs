@@ -1,12 +1,12 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStateService } from './services/auth-state.service';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
@@ -17,13 +17,23 @@ import { AuthStateService } from './services/auth-state.service';
               <path d="M9 19V6l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <h1 class="text-2xl font-bold text-white cursor-pointer" (click)="goHome()">SoundWave</h1>
+          <h1 class="text-2xl font-bold text-white cursor-pointer" (click)="goHome()">MusicVs</h1>
         </div>
 
         <nav class="hidden md:flex items-center gap-8">
-          <a href="#discover" class="text-gray-300 hover:text-white transition-colors">Discover</a>
-          <a href="#playlists" class="text-gray-300 hover:text-white transition-colors">Playlists</a>
-          <a href="#artists" class="text-gray-300 hover:text-white transition-colors">Artists</a>
+          <a routerLink="/" 
+             routerLinkActive="active-link"
+             [routerLinkActiveOptions]="{exact: true}"
+             class="text-gray-300 hover:text-white transition-colors nav-link">Home</a>
+          <a routerLink="/discover" 
+             routerLinkActive="active-link"
+             class="text-gray-300 hover:text-white transition-colors nav-link">Discover</a>
+          <a routerLink="/playlists" 
+             routerLinkActive="active-link"
+             class="text-gray-300 hover:text-white transition-colors nav-link">Playlists</a>
+          <a routerLink="/artists" 
+             routerLinkActive="active-link"
+             class="text-gray-300 hover:text-white transition-colors nav-link">Artists</a>
         </nav>
 
         <div class="flex items-center gap-4 relative">
@@ -87,7 +97,7 @@ import { AuthStateService } from './services/auth-state.service';
 
           <!-- Login Button (When Not Logged In) -->
           <ng-template #loggedOut>
-            <a href="/auth" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors font-medium">
+            <a routerLink="/auth" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors font-medium">
               Iniciar sesión
             </a>
           </ng-template>
@@ -99,19 +109,76 @@ import { AuthStateService } from './services/auth-state.service';
             </svg>
           </button>
           
-          <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300 md:hidden">
+          <!-- Mobile Menu Toggle -->
+          <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300 md:hidden"
+                  (click)="toggleMobileMenu()">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           </button>
         </div>
       </div>
+      
+      <!-- Mobile Navigation Menu -->
+      <div *ngIf="isMobileMenuOpen" class="md:hidden bg-black/90 backdrop-blur-md border-t border-white/10">
+        <nav class="px-6 py-4 space-y-3">
+          <a routerLink="/" 
+             routerLinkActive="active-mobile-link"
+             [routerLinkActiveOptions]="{exact: true}"
+             (click)="closeMobileMenu()"
+             class="block py-2 text-gray-300 hover:text-white transition-colors">Home</a>
+          <a routerLink="/discover" 
+             routerLinkActive="active-mobile-link"
+             (click)="closeMobileMenu()"
+             class="block py-2 text-gray-300 hover:text-white transition-colors">Discover</a>
+          <a routerLink="/playlists" 
+             routerLinkActive="active-mobile-link"
+             (click)="closeMobileMenu()"
+             class="block py-2 text-gray-300 hover:text-white transition-colors">Playlists</a>
+          <a routerLink="/artists" 
+             routerLinkActive="active-mobile-link"
+             (click)="closeMobileMenu()"
+             class="block py-2 text-gray-300 hover:text-white transition-colors">Artists</a>
+        </nav>
+      </div>
     </header>
-  `
+  `,
+  styles: [`
+    .nav-link {
+      position: relative;
+      padding: 0.5rem 0;
+    }
+
+    .nav-link:hover {
+      color: #06b6d4;
+    }
+
+    .active-link {
+      color: #06b6d4 !important;
+      position: relative;
+    }
+
+    .active-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #06b6d4, #3b82f6);
+      border-radius: 1px;
+    }
+
+    .active-mobile-link {
+      color: #06b6d4 !important;
+      font-weight: 600;
+    }
+  `]
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   user: any = null;
   isUserMenuOpen = false;
+  isMobileMenuOpen = false;
   private unsub?: () => void;
 
   constructor(
@@ -182,6 +249,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  toggleMobileMenu() {
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+    this.cdr.detectChanges();
+  }
+
+  closeMobileMenu() {
+    this.isMobileMenuOpen = false;
+    this.cdr.detectChanges();
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event) {
     const target = event.target as HTMLElement;
@@ -193,6 +270,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   goHome() {
     this.router.navigate(['/']);
+    this.closeMobileMenu();
   }
 
   async logout() {

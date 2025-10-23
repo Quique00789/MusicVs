@@ -28,21 +28,7 @@ import { AudioPlayerService } from './services/audio-player.service';
           </div>
         </div>
 
-        <app-player
-          [currentSong]="currentSong()"
-          [isPlaying]="isPlaying()"
-          [progress]="progress()"
-          [volume]="volume()"
-          [playbackRate]="playbackRate()"
-          [formattedCurrentTime]="formattedCurrentTime"
-          (playPause)="togglePlay()"
-          (next)="next()"
-          (prev)="previous()"
-          (seek)="seek($event)"
-          (setVolume)="onSetVolume($event)"
-          (setPlaybackRate)="onSetPlaybackRate($event)"
-          (toggleMute)="onToggleMute()"
-        ></app-player>
+        <!-- Nota: el player global ya está en App root -->
       </section>
 
       <app-sticky-section title="Your Library" description="Access all your favorite music in one place. Create playlists, organize albums, and rediscover your collection with our intuitive library management system." imageUrl="https://images.pexels.com/photos/1699161/pexels-photo-1699161.jpeg?auto=compress&cs=tinysrgb&w=1200"></app-sticky-section>
@@ -76,9 +62,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.volume = this.audioPlayerService.volume;
   }
 
-  ngOnDestroy() {
-    this.audioPlayerService.destroy();
-  }
+  // Importante: no destruir el servicio global ni el audio al salir
+  ngOnDestroy() {}
 
   async onPlay(song: Song) {
     const currentSong = this.currentSong();

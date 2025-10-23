@@ -3,7 +3,7 @@ import { AuthComponent } from './auth.component';
 import { HomeComponent } from './home.component';
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
+  { path: '', component: HomeComponent },  // Ruta raíz
   { path: 'auth', loadComponent: () => AuthComponent },
-  { path: '**', redirectTo: '' }
+  { path: '**', redirectTo: '' }  // Redirección para rutas no encontradas
 ];

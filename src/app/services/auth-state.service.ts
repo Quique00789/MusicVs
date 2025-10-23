@@ -10,6 +10,7 @@ export class AuthStateService {
   private subs = new Set<Subscriber>();
   private initialized = false;
   private isBrowser: boolean;
+  private authSubscription: any = null;
 
   constructor(
     private supabase: SupabaseService, 
@@ -39,18 +40,18 @@ export class AuthStateService {
     // Set up auth state change listener
     const client = this.supabase.getClient();
     try {
-      const { data } = client.auth.onAuthStateChange((event, session) => {
-        console.log('Auth state change:', event, session?.user?.id || 'none');
+      this.authSubscription = client.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state change event:', event, 'User:', session?.user?.id || 'none');
         
         const u = session?.user ?? null;
-        // Ensure change detection runs: re-enter Angular zone
+        
+        // Always run in Angular zone to ensure UI updates
         this.zone.run(() => {
           this.setUser(u);
         });
       });
       
-      // Store subscription for cleanup if needed
-      console.log('Auth state listener set up');
+      console.log('Auth state listener set up successfully');
     } catch (e) {
       console.error('Error setting up auth state listener:', e);
     }
@@ -59,14 +60,16 @@ export class AuthStateService {
   }
 
   private setUser(u: any) {
-    const changed = this.user?.id !== u?.id;
+    const userChanged = this.user?.id !== u?.id;
+    const oldUser = this.user;
     this.user = u;
     
-    if (changed) {
-      console.log('User state changed:', u?.id || 'none');
+    if (userChanged) {
+      console.log('User state changed from:', oldUser?.id || 'none', 'to:', u?.id || 'none');
+      console.log('Notifying', this.subs.size, 'subscribers');
     }
     
-    // Notify all subscribers
+    // Notify all subscribers immediately
     for (const s of this.subs) {
       try {
         s(u);
@@ -80,7 +83,13 @@ export class AuthStateService {
     this.subs.add(cb);
     // Immediately call with current user state
     cb(this.user);
-    return () => this.subs.delete(cb);
+    
+    console.log('New subscriber added. Total subscribers:', this.subs.size);
+    
+    return () => {
+      this.subs.delete(cb);
+      console.log('Subscriber removed. Remaining subscribers:', this.subs.size);
+    };
   }
 
   getCurrentUser() { 
@@ -96,7 +105,8 @@ export class AuthStateService {
       console.log('AuthState: signing out...');
       await this.supabase.signOut();
       
-      // Force user state to null immediately
+      // The auth state change listener will handle setting user to null
+      // But we can also force it immediately
       this.zone.run(() => {
         this.setUser(null);
       });
@@ -119,11 +129,39 @@ export class AuthStateService {
   async refreshUserState() {
     if (!this.isBrowser) return;
     
+    console.log('Manually refreshing user state...');
+    
     try {
       const u = await this.supabase.getCurrentUser();
-      this.setUser(u);
+      
+      // Force update in Angular zone
+      this.zone.run(() => {
+        this.setUser(u);
+      });
+      
+      console.log('User state refreshed:', u?.id || 'none');
     } catch (e) {
       console.warn('Error refreshing user state:', e);
+    }
+  }
+
+  // Force an immediate update - useful when we know the state has changed
+  forceUpdate() {
+    this.zone.run(() => {
+      // Re-trigger all subscribers with current user
+      for (const s of this.subs) {
+        try {
+          s(this.user);
+        } catch (error) {
+          console.error('Error in forced auth state update:', error);
+        }
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.authSubscription) {
+      this.authSubscription.data?.subscription?.unsubscribe();
     }
   }
 }

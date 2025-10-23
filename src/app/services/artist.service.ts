@@ -45,7 +45,7 @@ Thank you for being part of my journey ;D.`,
           displayName: 'djvalls'
         }
       ],
-      songCount: 12, // Se puede actualizar según las canciones reales
+      songCount: 61, // Se puede actualizar según las canciones reales
       verified: true,
       createdAt: new Date('2023-01-01'),
       updatedAt: new Date()

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Artist } from './models/artist.model';
 import { ArtistService } from './services/artist.service';
+import { Song } from './models/song';
+import { songs as allSongs } from './data/songs';
 
 @Component({
   selector: 'app-artist-detail',
@@ -82,8 +84,14 @@ import { ArtistService } from './services/artist.service';
                    target="_blank"
                    class="p-3 bg-gray-800/50 hover:bg-gray-700/50 rounded-full transition-all duration-300 group transform hover:scale-110"
                    [title]="social.displayName">
-                  <div [innerHTML]="getSocialIcon(social.platform)" 
-                       class="w-6 h-6 text-gray-400 group-hover:text-white transition-colors">
+                  <div class="w-6 h-6 text-gray-400 group-hover:text-white transition-colors flex items-center justify-center">
+                    <img *ngIf="iconImageUrls[social.platform.toLowerCase()]" 
+                         [src]="iconImageUrls[social.platform.toLowerCase()]" 
+                         [alt]="social.displayName"
+                         class="w-6 h-6 object-contain"
+                         (error)="onIconImageError(social.platform)" />
+
+                    <div *ngIf="!iconImageUrls[social.platform.toLowerCase()]" [innerHTML]="getSocialIcon(social.platform)"></div>
                   </div>
                 </a>
               </div>
@@ -144,6 +152,21 @@ import { ArtistService } from './services/artist.service';
 export class ArtistDetailComponent implements OnInit {
   artist: Artist | null = null;
   
+  // ====== ICON IMAGE URLS ======
+  // Si prefieres usar imágenes en lugar de SVGs, coloca aquí la URL pública
+  // de cada icono. Por ejemplo:
+  // iconImageUrls = { instagram: 'https://.../insta.png', youtube: 'https://.../yt.png' }
+  // Déjalas vacías para seguir usando los SVG inline.
+  iconImageUrls: { [key: string]: string } = {
+    instagram: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/1200px-Instagram_icon.png',
+    youtube: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/2560px-YouTube_full-color_icon_%282017%29.svg.png',
+    spotify: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/1982px-Spotify_icon.svg.png',
+    soundcloud: 'https://cdn-icons-png.flaticon.com/512/145/145809.png'
+  };
+  
+  // Songs for this artist (filtered from the app's songs dataset)
+  artistSongs: Song[] = [];
+  
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -154,6 +177,14 @@ export class ArtistDetailComponent implements OnInit {
     this.route.params.subscribe(params => {
       const artistId = params['id'];
       this.artist = this.artistService.getArtistById(artistId) ?? null;
+
+      // populate artist songs (match by artist name)
+      if (this.artist) {
+        const artistName = this.artist.name;
+        this.artistSongs = allSongs.filter(s => s.artist === artistName);
+      } else {
+        this.artistSongs = [];
+      }
     });
   }
   
@@ -164,6 +195,14 @@ export class ArtistDetailComponent implements OnInit {
   onImageError(event: any) {
     // Si la imagen no se puede cargar, oculta el elemento img para que aparezca el fallback
     event.target.style.display = 'none';
+  }
+
+  onIconImageError(platform: string) {
+    // Si la URL del icono falla, limpiarla para que se muestre el SVG inline como fallback
+    const key = platform.toLowerCase();
+    if (this.iconImageUrls[key]) {
+      this.iconImageUrls[key] = '';
+    }
   }
   
   getInitials(name: string): string {

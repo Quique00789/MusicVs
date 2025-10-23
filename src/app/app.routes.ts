@@ -7,27 +7,27 @@ export const routes: Routes = [
   { path: 'auth', loadComponent: () => AuthComponent },
   { 
     path: 'discover', 
-    loadComponent: () => import('./pages/discover.component').then(m => m.DiscoverComponent)
+    loadComponent: () => import('./pages/discover.component.ts').then(m => m.DiscoverComponent)
   },
   { 
     path: 'playlists', 
-    loadComponent: () => import('./pages/playlists.component').then(m => m.PlaylistsComponent)
+    loadComponent: () => import('./pages/playlists.component.ts').then(m => m.PlaylistsComponent)
   },
   { 
     path: 'playlist/:id', 
-    loadComponent: () => import('./pages/playlist-detail.component').then(m => m.PlaylistDetailComponent)
+    loadComponent: () => import('./pages/playlist-detail.component.ts').then(m => m.PlaylistDetailComponent)
   },
   { 
     path: 'artists', 
-    loadComponent: () => import('./pages/artists.component').then(m => m.ArtistsComponent)
+    loadComponent: () => import('./pages/artists.component.ts').then(m => m.ArtistsComponent)
   },
   { 
     path: 'artist/:id', 
-    loadComponent: () => import('./pages/artist-detail.component').then(m => m.ArtistDetailComponent)
+    loadComponent: () => import('./pages/artist-detail.component.ts').then(m => m.ArtistDetailComponent)
   },
   { 
     path: 'favorites', 
-    loadComponent: () => import('./pages/favorites.component').then(m => m.FavoritesComponent)
+    loadComponent: () => import('./pages/favorites.component.ts').then(m => m.FavoritesComponent)
   },
   { path: '**', redirectTo: '' }
 ];

@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { songs } from './data/songs';
 import { Song } from './models/song';
 import { SongCardComponent } from './song-card.component';
-import { PlayerComponent } from './player.component';
 import { HeroComponent } from './hero.component';
 import { StickySectionComponent } from './sticky-section.component';
 import { AudioPlayerService } from './services/audio-player.service';
@@ -11,7 +10,7 @@ import { AudioPlayerService } from './services/audio-player.service';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, SongCardComponent, PlayerComponent, HeroComponent, StickySectionComponent],
+  imports: [CommonModule, SongCardComponent, HeroComponent, StickySectionComponent],
   template: `
     <main class="pt-20">
       <app-hero></app-hero>

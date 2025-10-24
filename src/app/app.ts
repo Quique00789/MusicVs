@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { HeaderComponent } from './header.component';
 import { PlayerComponent } from './player.component';
 import { AudioPlayerService } from './services/audio-player.service';
+import { songs } from './data/songs';
 
 @Component({
   selector: 'app-root',
@@ -28,6 +29,8 @@ import { AudioPlayerService } from './services/audio-player.service';
           [playbackRate]="audio.playbackRate()"
           [formattedCurrentTime]="audio.formattedCurrentTime()"
           (playPause)="audio.togglePlay()"
+          (next)="onNext()"
+          (prev)="onPrevious()"
           (seek)="audio.seek($event)"
           (setVolume)="audio.setVolume($event)"
           (setPlaybackRate)="audio.setPlaybackRate($event)"
@@ -50,6 +53,7 @@ import { AudioPlayerService } from './services/audio-player.service';
 export class App {
   // Controlamos ocultar/mostrar con una clase en el propio Player para no desmontarlo
   hidden = signal(false);
+  songs = songs; // Importamos las canciones para la navegación
 
   constructor(public audio: AudioPlayerService) {}
 
@@ -63,6 +67,30 @@ export class App {
       } else {
         el.classList.remove('opacity-0','translate-y-4','pointer-events-none');
       }
+    }
+  }
+
+  async onNext() {
+    const currentIndex = this.audio.currentIndex();
+    const nextIndex = (currentIndex + 1) % this.songs.length;
+    this.audio.currentIndex.set(nextIndex);
+    const nextSong = this.songs[nextIndex];
+    try {
+      await this.audio.playSong(nextSong, nextSong.audioPath, nextSong.requiresSignedUrl || false);
+    } catch (error) {
+      console.error('Error playing next song:', error);
+    }
+  }
+
+  async onPrevious() {
+    const currentIndex = this.audio.currentIndex();
+    const prevIndex = (currentIndex - 1 + this.songs.length) % this.songs.length;
+    this.audio.currentIndex.set(prevIndex);
+    const prevSong = this.songs[prevIndex];
+    try {
+      await this.audio.playSong(prevSong, prevSong.audioPath, prevSong.requiresSignedUrl || false);
+    } catch (error) {
+      console.error('Error playing previous song:', error);
     }
   }
 }

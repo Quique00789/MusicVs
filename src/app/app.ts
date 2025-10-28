@@ -1,6 +1,7 @@
 // src/app/app.ts
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterModule, Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { HeaderComponent } from './header.component';
 import { PlayerComponent } from './player.component';
 import { AudioPlayerService } from './services/audio-player.service';
@@ -9,7 +10,7 @@ import { songs } from './data/songs';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterModule, HeaderComponent, PlayerComponent],
+  imports: [CommonModule, RouterModule, HeaderComponent, PlayerComponent],
   template: `
     <app-header></app-header>
 
@@ -19,7 +20,7 @@ import { songs } from './data/songs';
     </div>
 
     <!-- Persistent Global Player: siempre montado -->
-    <div class="fixed bottom-4 left-4 right-4 z-50 pointer-events-none transition-all duration-300 ease-in-out" [class.opacity-0]="hidden()" [class.translate-y-4]="hidden()" [class.pointer-events-none]="hidden()">
+    <div class="fixed bottom-4 left-4 right-4 z-50 pointer-events-none transition-all duration-300 ease-in-out" [class.opacity-0]="hidden()" [class.translate-y-4]="hidden()">
       <div class="pointer-events-auto">
         <app-player
           [currentSong]="audio.currentSong()"
@@ -62,9 +63,8 @@ import { songs } from './data/songs';
   styleUrls: ['./app.css']
 })
 export class App {
-  // Controlamos ocultar/mostrar con una clase en el propio Player para no desmontarlo
   hidden = signal(false);
-  songs = songs; // Importamos las canciones para la navegación
+  songs = songs;
 
   constructor(public audio: AudioPlayerService, private router: Router) {}
 

@@ -273,6 +273,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.closeMobileMenu();
   }
 
+  goToArtists() {
+    this.router.navigate(['/artists']);
+  }
+
   async logout() {
     this.isUserMenuOpen = false;
     this.cdr.detectChanges();

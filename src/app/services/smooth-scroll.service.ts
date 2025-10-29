@@ -7,98 +7,197 @@ export class SmoothScrollService {
   private lenis: any = null;
   private gsap: any = null;
   private ScrollTrigger: any = null;
-  private rafId: number | null = null;
   private isInitialized = false;
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     if (isPlatformBrowser(this.platformId)) {
-      void this.initialize();
+      this.initializeScrollLibraries();
     }
   }
 
-  async initialize() {
-    if (this.isInitialized || !isPlatformBrowser(this.platformId)) return;
+  private async initializeScrollLibraries() {
+    if (this.isInitialized) return;
+
     try {
+      // Dynamic imports para evitar errores de SSR
       const [{ default: Lenis }, gsapModule] = await Promise.all([
         import('lenis'),
         import('gsap')
       ]);
+
       this.gsap = gsapModule && (gsapModule.default || gsapModule);
       const { ScrollTrigger } = await import('gsap/ScrollTrigger');
       this.ScrollTrigger = ScrollTrigger;
-      if (this.gsap && this.ScrollTrigger) this.gsap.registerPlugin(this.ScrollTrigger);
+      
+      if (this.gsap && this.ScrollTrigger) {
+        this.gsap.registerPlugin(this.ScrollTrigger);
+      }
 
-      // Lenis config tuned to avoid stalls and overscroll glitches
+      // Configuración de Lenis con propiedades válidas
       this.lenis = new Lenis({
-        duration: 1.0,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3),
-        orientation: 'vertical',
+        duration: 0.8,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
-        wheelMultiplier: 1.1,
-        touchMultiplier: 1.2,
-        autoRaf: false
-      } as any);
-
-      // Single RAF loop managed here
-      const loop = (time: number) => {
-        this.lenis?.raf(time);
-        this.ScrollTrigger?.update();
-        this.rafId = requestAnimationFrame(loop);
-      };
-      this.rafId = requestAnimationFrame(loop);
-
-      // Scroller proxy for ScrollTrigger syncing
-      const scroller = (document.scrollingElement || document.documentElement) as HTMLElement;
-      this.ScrollTrigger?.scrollerProxy(scroller, {
-        scrollTop: (value?: number) => {
-          if (typeof value === 'number') {
-            this.lenis?.scrollTo(value, { immediate: true });
-          }
-          return scroller.scrollTop || window.pageYOffset;
-        },
-        getBoundingClientRect: () => ({ top: 0, left: 0, width: window.innerWidth, height: window.innerHeight }),
-        pinType: scroller.style.transform ? 'transform' : 'fixed'
+        orientation: 'vertical'
       });
 
-      // Reduce refresh thrash: use event and debounce
-      const debouncedRefresh = this.debounce(() => this.ScrollTrigger?.refresh(), 150);
-      window.addEventListener('resize', debouncedRefresh, { passive: true });
-      window.addEventListener('orientationchange', debouncedRefresh, { passive: true });
+      // RAF loop para Lenis
+      const raf = (time: number) => {
+        if (this.lenis) {
+          this.lenis.raf(time);
+        }
+        requestAnimationFrame(raf);
+      };
+      requestAnimationFrame(raf);
 
-      // Guard against GSAP double RAF by disabling lag smoothing
-      this.gsap.ticker?.lagSmoothing(0);
+      // Configuración de ScrollTrigger con Lenis
+      if (this.ScrollTrigger && this.lenis) {
+        const scroller = (document.scrollingElement || document.documentElement) as HTMLElement;
+        
+        this.ScrollTrigger.scrollerProxy(scroller, {
+          scrollTop: (value?: number) => {
+            if (arguments.length) {
+              this.lenis.scrollTo(value as number);
+              return;
+            }
+            return scroller.scrollTop || window.pageYOffset;
+          },
+          getBoundingClientRect: () => {
+            return { 
+              top: 0, 
+              left: 0, 
+              width: window.innerWidth, 
+              height: window.innerHeight 
+            };
+          },
+          pinType: (scroller.style && scroller.style.transform) ? 'transform' : 'fixed'
+        });
+
+        // Sincronizar Lenis con ScrollTrigger
+        this.lenis.on('scroll', () => {
+          this.ScrollTrigger.update();
+        });
+
+        // Refresh ScrollTrigger
+        this.ScrollTrigger.refresh();
+      }
 
       this.isInitialized = true;
-      this.ScrollTrigger?.refresh();
-    } catch (e) {
-      console.warn('SmoothScroll init failed', e);
+      console.log('Smooth scroll libraries initialized successfully');
+    } catch (error) {
+      console.warn('Failed to initialize smooth scroll libraries:', error);
     }
   }
 
-  // Utility: debounce
-  private debounce<T extends (...args: any[]) => void>(fn: T, wait: number) {
-    let t: any;
-    return (...args: any[]) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...args), wait);
-    };
-  }
-
-  // Public APIs
+  // Método para scroll suave a elemento específico
   scrollTo(target: string | number | HTMLElement, options?: any) {
-    this.lenis?.scrollTo(target as any, { duration: 0.9, ...options });
+    if (!this.lenis || !isPlatformBrowser(this.platformId)) return;
+
+    const defaultOptions = {
+      offset: 0,
+      duration: 1,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      immediate: false,
+      ...options
+    };
+
+    this.lenis.scrollTo(target, defaultOptions);
   }
 
-  pause() { this.lenis?.stop(); }
-  resume() { this.lenis?.start(); }
-  refresh() { this.ScrollTrigger?.refresh(); }
+  // Método para pausar/reanudar el scroll suave
+  toggleScroll(enabled: boolean = true) {
+    if (!this.lenis) return;
+    
+    if (enabled) {
+      this.lenis.start();
+    } else {
+      this.lenis.stop();
+    }
+  }
 
+  // Método para obtener la posición actual del scroll
+  getCurrentScroll(): number {
+    if (!this.lenis) return 0;
+    return this.lenis.scroll || 0;
+  }
+
+  // Método para refresh de ScrollTrigger
+  refreshScrollTrigger() {
+    if (this.ScrollTrigger) {
+      this.ScrollTrigger.refresh();
+    }
+  }
+
+  // Método para crear animaciones GSAP con ScrollTrigger
+  createScrollAnimation(element: string | HTMLElement, animation: any, triggerOptions?: any) {
+    if (!this.gsap || !this.ScrollTrigger || !isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    const defaultTriggerOptions = {
+      trigger: element,
+      start: 'top 80%',
+      end: 'bottom 20%',
+      toggleActions: 'play none none reverse',
+      ...triggerOptions
+    };
+
+    return this.gsap.timeline({
+      scrollTrigger: defaultTriggerOptions
+    }).add(animation);
+  }
+
+  // Método para animaciones de entrada fade-in-up
+  fadeInUp(elements: string | HTMLElement[], options?: any) {
+    if (!this.gsap || !isPlatformBrowser(this.platformId)) return;
+
+    const defaultOptions = {
+      y: 50,
+      opacity: 0,
+      duration: 0.8,
+      stagger: 0.1,
+      ease: 'power2.out',
+      ...options
+    };
+
+    const elementsArray = Array.isArray(elements) ? elements : [elements];
+    
+    elementsArray.forEach((element, index) => {
+      this.gsap.fromTo(element, 
+        { y: defaultOptions.y, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: defaultOptions.duration,
+          delay: index * defaultOptions.stagger,
+          ease: defaultOptions.ease,
+          scrollTrigger: {
+            trigger: element,
+            start: 'top 80%',
+            end: 'bottom 20%',
+            toggleActions: 'play none none reverse'
+          }
+        }
+      );
+    });
+  }
+
+  // Método para destroy (cleanup)
   destroy() {
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-    this.rafId = null;
-    try { this.lenis?.destroy(); } catch {}
-    this.lenis = null;
-    try { this.ScrollTrigger?.killAll?.(); } catch {}
+    if (this.lenis) {
+      this.lenis.destroy();
+      this.lenis = null;
+    }
+    
+    if (this.ScrollTrigger) {
+      this.ScrollTrigger.killAll();
+    }
+    
     this.isInitialized = false;
+  }
+
+  // Getter para verificar si está inicializado
+  get initialized(): boolean {
+    return this.isInitialized;
   }
 }

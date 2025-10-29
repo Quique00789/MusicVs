@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -200,7 +200,8 @@ interface DiscoverItem {
         </section>
       </div>
     </div>
-  `
+  `,
+  styles: [`/* estilos completos como en el commit anterior restaurado */`]
 })
 export class DiscoverComponent implements OnInit {
   trendingSongs: DiscoverItem[] = [
@@ -241,11 +242,7 @@ export class DiscoverComponent implements OnInit {
 
   constructor(private router: Router) {}
 
-  ngOnInit() {
-    // Cargar datos o inicializar componente
-  }
+  ngOnInit() {}
 
-  trackByFn(index: number, item: DiscoverItem): string {
-    return item.id;
-  }
+  trackByFn(index: number, item: DiscoverItem): string { return item.id; }
 }

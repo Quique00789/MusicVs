@@ -7,10 +7,10 @@ import { Song } from './models/song';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div *ngIf="currentSong" class="fixed bottom-2 left-2 right-2 md:bottom-4 md:left-4 md:right-4 z-50 bg-gradient-to-t from-slate-900/95 to-black/80 backdrop-blur-lg border border-white/5 rounded-xl md:rounded-2xl p-3 md:p-4 relative">
+    <div *ngIf="currentSong" class="fixed bottom-4 left-4 right-4 z-50 bg-gradient-to-t from-slate-900/95 to-black/80 backdrop-blur-lg border border-white/5 rounded-2xl p-4 relative">
       <!-- Queue dropdown menu -->
-      <div *ngIf="showQueue()" class="absolute bottom-full right-3 md:right-4 mb-2 w-[88vw] max-w-80 bg-gradient-to-b from-slate-800/95 to-slate-900/95 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl overflow-hidden">
-        <div class="max-h-72 md:max-h-96 overflow-y-auto">
+      <div *ngIf="showQueue()" class="absolute bottom-full right-4 mb-2 w-80 bg-gradient-to-b from-slate-800/95 to-slate-900/95 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div class="max-h-96 overflow-y-auto">
           <!-- Queue header -->
           <div class="sticky top-0 bg-slate-800/90 backdrop-blur-sm p-3 border-b border-white/10">
             <div class="flex items-center justify-between">
@@ -61,67 +61,53 @@ import { Song } from './models/song';
         </div>
       </div>
       
-      <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-        <!-- Left: cover + meta -->
-        <div class="flex items-center gap-3 min-w-0">
-          <img [src]="currentSong.cover" class="w-12 h-12 md:w-14 md:h-14 rounded-lg shadow-lg object-cover flex-shrink-0" />
-          <div class="min-w-0">
-            <div class="text-white font-semibold text-sm md:text-base truncate">{{ currentSong.title }}</div>
-            <div class="text-gray-400 text-xs md:text-sm truncate">{{ currentSong.artist }}</div>
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <img [src]="currentSong.cover" class="w-14 h-14 rounded-lg shadow-lg object-cover" />
+          <div>
+            <div class="text-white font-semibold">{{ currentSong.title }}</div>
+            <div class="text-gray-400 text-sm">{{ currentSong.artist }}</div>
           </div>
         </div>
 
-        <!-- Center: controls + seek on mobile stacked -->
-        <div class="flex-1 flex flex-col items-center gap-2">
-          <div class="flex items-center gap-4 md:gap-6">
-            <button (click)="prev.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-              </svg>
-            </button>
-            <button (click)="playPause.emit()" class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg text-white hover:from-cyan-500 hover:to-blue-700 transition-all">
-              <svg *ngIf="!isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="m7 4 10 8L7 20V4z"/>
-              </svg>
-              <svg *ngIf="isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14 19h4V5h-4M6 19h4V5H6v14Z"/>
-              </svg>
-            </button>
-            <button (click)="next.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16 18h2V6h-2M6 18l8.5-6L6 6v12z"/>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Seek bar with progress fill -->
-          <div class="flex items-center gap-3 w-full px-1">
-            <span class="text-[10px] md:text-xs text-gray-400 tabular-nums leading-none">{{ formattedCurrentTime }}</span>
-            <div class="relative flex-1 h-3">
-              <input type="range" class="seek w-full h-2 appearance-none bg-transparent" min="0" max="100" [value]="progress" (input)="onSeek($event)" />
-              <div class="pointer-events-none absolute inset-0 rounded-full bg-gray-700/60"></div>
-              <div class="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600" [style.width.%]="progress"></div>
-            </div>
-            <span class="text-[10px] md:text-xs text-gray-400 leading-none">{{ currentSong.duration }}</span>
-          </div>
+        <div class="flex items-center gap-6">
+          <button (click)="prev.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+            </svg>
+          </button>
+          <button (click)="playPause.emit()" class="w-12 h-12 bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg text-white hover:from-cyan-500 hover:to-blue-700 transition-all">
+            <svg *ngIf="!isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="m7 4 10 8L7 20V4z"/>
+            </svg>
+            <svg *ngIf="isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 19h4V5h-4M6 19h4V5H6v14Z"/>
+            </svg>
+          </button>
+          <button (click)="next.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 18h2V6h-2M6 18l8.5-6L6 6v12z"/>
+            </svg>
+          </button>
         </div>
 
-        <!-- Right: volume, rate, queue -->
-        <div class="flex items-center justify-between md:justify-end gap-3 md:gap-4">
+        <div class="flex items-center gap-4">
+          <!-- Seek -->
+          <input type="range" class="w-72 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" min="0" max="100" [value]="progress" (input)="onSeek($event)" />
+          <div class="text-gray-400 text-sm whitespace-nowrap">{{ formattedCurrentTime }} / {{ currentSong.duration }}</div>
+        </div>
+
+        <div class="flex items-center gap-4">
           <!-- Volume -->
-          <button (click)="toggleMute.emit()" class="p-1.5 md:p-2 text-gray-300 hover:text-white transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <button (click)="toggleMute.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
             </svg>
           </button>
-          <div class="relative w-24 md:w-28 h-3">
-            <input type="range" min="0" max="1" step="0.01" [value]="volume" (input)="onVolume($event)" class="volume w-full h-2 appearance-none bg-transparent" />
-            <div class="pointer-events-none absolute inset-0 rounded-full bg-gray-700/60"></div>
-            <div class="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600" [style.width.%]="volume*100"></div>
-          </div>
+          <input type="range" min="0" max="1" step="0.01" [value]="volume" (input)="onVolume($event)" class="w-28 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" />
 
-          <!-- Playback rate (hide on very small screens) -->
-          <select [value]="playbackRate" (change)="onRate($event)" class="hidden xs:block bg-gray-800/50 text-xs md:text-sm text-gray-300 px-2 py-1 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors">
+          <!-- Playback rate -->
+          <select [value]="playbackRate" (change)="onRate($event)" class="bg-gray-800/50 text-sm text-gray-300 px-2 py-1 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors">
             <option value="0.5">0.5x</option>
             <option value="0.75">0.75x</option>
             <option value="1">1x</option>
@@ -133,10 +119,10 @@ import { Song } from './models/song';
           <!-- Queue button -->
           <div class="relative">
             <button (click)="toggleQueue()" 
-                    class="p-1.5 md:p-2 text-gray-300 hover:text-white transition-colors group relative" 
+                    class="p-2 text-gray-300 hover:text-white transition-colors group relative" 
                     [class.text-cyan-400]="showQueue()"
                     title="Cola de reproducción">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:scale-110 transition-transform">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:scale-110 transition-transform">
                 <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
               </svg>
             </button>
@@ -145,26 +131,37 @@ import { Song } from './models/song';
       </div>
     </div>
 
-    <!-- Custom range styles: thumbs only (track emulado con divs) -->
+    <!-- Custom slider styles -->
     <style>
-      .seek::-webkit-slider-thumb, .volume::-webkit-slider-thumb {
+      .slider::-webkit-slider-thumb {
         appearance: none;
-        height: 14px;
-        width: 14px;
-        border-radius: 9999px;
-        background: white;
-        border: 2px solid #22d3ee;
-        box-shadow: 0 2px 8px rgba(34, 211, 238, 0.35);
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #06b6d4, #2563eb);
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       }
-      .seek::-moz-range-thumb, .volume::-moz-range-thumb {
-        height: 14px;
-        width: 14px;
-        border-radius: 9999px;
-        background: white;
-        border: 2px solid #22d3ee;
-        box-shadow: 0 2px 8px rgba(34, 211, 238, 0.35);
+      
+      .slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
       }
-      .seek, .volume { outline: none; }
+      
+      .slider::-moz-range-thumb {
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #06b6d4, #2563eb);
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+      
+      .slider::-moz-range-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+      }
     </style>
   `
 })

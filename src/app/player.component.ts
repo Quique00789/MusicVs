@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Song } from './models/song';
 
@@ -63,7 +63,20 @@ import { Song } from './models/song';
       
       <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <img [src]="currentSong.cover" class="w-14 h-14 rounded-lg shadow-lg object-cover" />
+          <div class="relative">
+            <img [src]="currentSong.cover" class="w-14 h-14 rounded-lg shadow-lg object-cover" />
+            <!-- Visualizador de música en la imagen -->
+            <div class="absolute inset-0 rounded-lg overflow-hidden bg-black/20">
+              <div class="flex items-end h-full px-1 gap-px">
+                <div *ngFor="let bar of visualizerBars; let i = index" 
+                     class="bg-gradient-to-t from-cyan-400 to-blue-500 rounded-sm transition-all duration-100"
+                     [style.width.px]="2"
+                     [style.height.%]="bar"
+                     [style.animation-delay.ms]="i * 50">
+                </div>
+              </div>
+            </div>
+          </div>
           <div>
             <div class="text-white font-semibold">{{ currentSong.title }}</div>
             <div class="text-gray-400 text-sm">{{ currentSong.artist }}</div>
@@ -71,12 +84,12 @@ import { Song } from './models/song';
         </div>
 
         <div class="flex items-center gap-6">
-          <button (click)="prev.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
+          <button (click)="prev.emit()" class="p-2 text-gray-300 hover:text-white transition-all duration-200 hover:scale-110">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
             </svg>
           </button>
-          <button (click)="playPause.emit()" class="w-12 h-12 bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg text-white hover:from-cyan-500 hover:to-blue-700 transition-all">
+          <button (click)="playPause.emit()" class="w-12 h-12 bg-gradient-to-r from-cyan-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg text-white hover:from-cyan-500 hover:to-blue-700 transition-all duration-200 hover:scale-105 active:scale-95">
             <svg *ngIf="!isPlaying" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="m7 4 10 8L7 20V4z"/>
             </svg>
@@ -84,7 +97,7 @@ import { Song } from './models/song';
               <path d="M14 19h4V5h-4M6 19h4V5H6v14Z"/>
             </svg>
           </button>
-          <button (click)="next.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
+          <button (click)="next.emit()" class="p-2 text-gray-300 hover:text-white transition-all duration-200 hover:scale-110">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M16 18h2V6h-2M6 18l8.5-6L6 6v12z"/>
             </svg>
@@ -92,22 +105,75 @@ import { Song } from './models/song';
         </div>
 
         <div class="flex items-center gap-4">
-          <!-- Seek -->
-          <input type="range" class="w-72 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" min="0" max="100" [value]="progress" (input)="onSeek($event)" />
+          <!-- Progreso con visualización de cola -->
+          <div class="relative w-72">
+            <!-- Barra de fondo -->
+            <div class="h-2 bg-gray-700 rounded-lg overflow-hidden">
+              <!-- Progreso transcurrido -->
+              <div class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 rounded-lg relative"
+                   [style.width.%]="progress">
+                <!-- Cola del progreso con efecto de partículas -->
+                <div class="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-cyan-300/60 to-transparent blur-sm"></div>
+                <div class="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-1 bg-white rounded-full animate-pulse"></div>
+              </div>
+            </div>
+            <!-- Input range invisible para interacción -->
+            <input type="range" 
+                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                   min="0" 
+                   max="100" 
+                   [value]="progress" 
+                   (input)="onSeek($event)" />
+          </div>
           <div class="text-gray-400 text-sm whitespace-nowrap">{{ formattedCurrentTime }} / {{ currentSong.duration }}</div>
         </div>
 
         <div class="flex items-center gap-4">
-          <!-- Volume -->
-          <button (click)="toggleMute.emit()" class="p-2 text-gray-300 hover:text-white transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-            </svg>
-          </button>
-          <input type="range" min="0" max="1" step="0.01" [value]="volume" (input)="onVolume($event)" class="w-28 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" />
+          <!-- Volumen con visualización -->
+          <div class="relative group">
+            <button (click)="toggleMute.emit()" 
+                    class="p-2 text-gray-300 hover:text-white transition-all duration-200 hover:scale-110"
+                    [class.text-red-400]="volume === 0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path *ngIf="volume > 0.5" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                <path *ngIf="volume <= 0.5 && volume > 0" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                <path *ngIf="volume === 0" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A5.5 5.5 0 0 0 14 7.97v2.06c1.48.73 2.5 2.25 2.5 4.02z"/>
+              </svg>
+            </button>
+            
+            <!-- Barra de volumen con visualización -->
+            <div class="relative w-28">
+              <div class="h-2 bg-gray-700 rounded-lg overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-green-400 to-cyan-400 transition-all duration-200 relative"
+                     [style.width.%]="volume * 100">
+                  <!-- Efecto de brillo en el volumen -->
+                  <div class="absolute right-0 top-0 h-full w-4 bg-gradient-to-l from-white/30 to-transparent"></div>
+                </div>
+              </div>
+              <input type="range" 
+                     min="0" 
+                     max="1" 
+                     step="0.01" 
+                     [value]="volume" 
+                     (input)="onVolume($event)" 
+                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+            </div>
+            
+            <!-- Visualizador de volumen con barras -->
+            <div class="absolute -top-8 left-0 right-0 flex items-end justify-center gap-px opacity-0 group-hover:opacity-100 transition-all duration-200">
+              <div *ngFor="let bar of volumeBars; let i = index" 
+                   class="bg-gradient-to-t from-green-400 to-cyan-400 rounded-sm transition-all duration-100"
+                   [style.width.px]="2"
+                   [style.height.px]="bar"
+                   [style.opacity]="i < (volume * volumeBars.length) ? 1 : 0.3">
+              </div>
+            </div>
+          </div>
 
-          <!-- Playback rate -->
-          <select [value]="playbackRate" (change)="onRate($event)" class="bg-gray-800/50 text-sm text-gray-300 px-2 py-1 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors">
+          <!-- Velocidad de reproducción -->
+          <select [value]="playbackRate" 
+                  (change)="onRate($event)" 
+                  class="bg-gray-800/50 text-sm text-gray-300 px-2 py-1 rounded-lg border border-gray-600 hover:border-gray-500 transition-all duration-200 hover:bg-gray-700/50">
             <option value="0.5">0.5x</option>
             <option value="0.75">0.75x</option>
             <option value="1">1x</option>
@@ -116,56 +182,87 @@ import { Song } from './models/song';
             <option value="2">2x</option>
           </select>
 
-          <!-- Queue button -->
+          <!-- Botón de cola -->
           <div class="relative">
             <button (click)="toggleQueue()" 
-                    class="p-2 text-gray-300 hover:text-white transition-colors group relative" 
+                    class="p-2 text-gray-300 hover:text-white transition-all duration-200 group relative hover:scale-110" 
                     [class.text-cyan-400]="showQueue()"
                     title="Cola de reproducción">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:scale-110 transition-transform">
                 <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
               </svg>
+              <!-- Indicador de cantidad en cola -->
+              <div *ngIf="queueSongs.length > 0" 
+                   class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {{ queueSongs.length }}
+              </div>
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Custom slider styles -->
+    <!-- Estilos CSS para animaciones y efectos -->
     <style>
-      .slider::-webkit-slider-thumb {
-        appearance: none;
-        height: 16px;
-        width: 16px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #06b6d4, #2563eb);
-        cursor: pointer;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      @keyframes visualizerPulse {
+        0%, 100% { height: 20%; }
+        50% { height: 80%; }
       }
       
-      .slider::-webkit-slider-thumb:hover {
-        transform: scale(1.2);
-        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+      @keyframes volumePulse {
+        0%, 100% { height: 4px; }
+        50% { height: 16px; }
       }
       
-      .slider::-moz-range-thumb {
-        height: 16px;
-        width: 16px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #06b6d4, #2563eb);
-        cursor: pointer;
-        border: none;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      .visualizer-bar {
+        animation: visualizerPulse 0.8s ease-in-out infinite;
       }
       
-      .slider::-moz-range-thumb:hover {
-        transform: scale(1.2);
-        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+      .volume-bar {
+        animation: volumePulse 0.6s ease-in-out infinite;
+      }
+      
+      /* Estilos para las barras del visualizador */
+      .visualizer-container {
+        display: flex;
+        align-items: end;
+        height: 100%;
+        padding: 0 2px;
+        gap: 1px;
+      }
+      
+      /* Efecto de partículas en el progreso */
+      @keyframes particleFloat {
+        0% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-10px); }
+      }
+      
+      .progress-particle {
+        animation: particleFloat 1s ease-out infinite;
+      }
+      
+      /* Hover effects */
+      .control-button:hover {
+        transform: scale(1.1);
+        filter: brightness(1.2);
+      }
+      
+      .control-button:active {
+        transform: scale(0.95);
+      }
+      
+      /* Glowing effect para el play button */
+      .play-button {
+        box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+      }
+      
+      .play-button:hover {
+        box-shadow: 0 0 30px rgba(6, 182, 212, 0.5);
       }
     </style>
   `
 })
-export class PlayerComponent {
+export class PlayerComponent implements AfterViewInit {
   @Input() currentSong: Song | null = null;
   @Input() isPlaying = false;
   @Input() progress = 0;
@@ -183,9 +280,72 @@ export class PlayerComponent {
   @Output() onQueueSongClick = new EventEmitter<number>();
 
   showQueue = signal(false);
+  visualizerBars: number[] = [];
+  volumeBars: number[] = [];
+  private animationFrameId?: number;
 
-  toggleQueue() { this.showQueue.set(!this.showQueue()); }
-  onSeek(e: any) { const val = Number(e.target.value); this.seek.emit(val); }
-  onVolume(e: any) { const v = Number(e.target.value); this.setVolume.emit(v); }
-  onRate(e: any) { const r = Number(e.target.value); this.setPlaybackRate.emit(r); }
+  ngAfterViewInit() {
+    this.initializeVisualizers();
+    this.startAnimations();
+  }
+
+  ngOnDestroy() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+  }
+
+  private initializeVisualizers() {
+    // Inicializar barras del visualizador de música (12 barras)
+    this.visualizerBars = Array(12).fill(0).map(() => Math.random() * 60 + 20);
+    
+    // Inicializar barras del visualizador de volumen (8 barras)
+    this.volumeBars = Array(8).fill(0).map((_, i) => 4 + (i * 2));
+  }
+
+  private startAnimations() {
+    const animate = () => {
+      if (this.isPlaying) {
+        // Animar barras del visualizador de música
+        this.visualizerBars = this.visualizerBars.map(() => {
+          return Math.random() * 70 + 10;
+        });
+      } else {
+        // Reducir gradualmente las barras cuando no está reproduciendo
+        this.visualizerBars = this.visualizerBars.map(bar => {
+          return Math.max(10, bar * 0.95);
+        });
+      }
+      
+      // Animar barras de volumen basadas en el nivel actual
+      this.volumeBars = this.volumeBars.map((_, i) => {
+        const baseHeight = 4 + (i * 1.5);
+        const volumeMultiplier = this.volume * (Math.random() * 0.5 + 0.5);
+        return baseHeight * (1 + volumeMultiplier);
+      });
+      
+      this.animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+  }
+
+  toggleQueue() { 
+    this.showQueue.set(!this.showQueue()); 
+  }
+  
+  onSeek(e: any) { 
+    const val = Number(e.target.value); 
+    this.seek.emit(val); 
+  }
+  
+  onVolume(e: any) { 
+    const v = Number(e.target.value); 
+    this.setVolume.emit(v); 
+  }
+  
+  onRate(e: any) { 
+    const r = Number(e.target.value); 
+    this.setPlaybackRate.emit(r); 
+  }
 }

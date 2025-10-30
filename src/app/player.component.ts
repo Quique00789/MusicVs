@@ -14,7 +14,7 @@ import { Song } from './models/song';
           <div class="sticky top-0 bg-slate-800/90 backdrop-blur-sm p-3 border-b border-white/10">
             <div class="flex items-center justify-between">
               <h3 class="text-white font-semibold text-sm">Cola de reproducción</h3>
-              <button (click)="toggleQueue()" class="p-1 text-gray-400 hover:text-white transition-colors">
+              <button (click)="onToggleQueue()" class="p-1 text-gray-400 hover:text-white transition-colors">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
@@ -55,8 +55,8 @@ import { Song } from './models/song';
           </div>
         </div>
       </div>
-      
-      <!-- Restored layouts (desktop/mobile) omitted for brevity: they permanecen como en commit 8e0b154 -->
+
+      <!-- Resto del layout (desktop/móvil) se mantiene igual -->
     </div>
   `
 })
@@ -80,4 +80,6 @@ export class PlayerComponent implements AfterViewInit {
   showQueue = signal(false);
   visualizerBars: number[] = [];
   ngAfterViewInit() {}
+
+  onToggleQueue(){ this.showQueue.set(!this.showQueue()); }
 }

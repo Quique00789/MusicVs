@@ -65,14 +65,13 @@ import { Song } from './models/song';
         <div class="flex items-center gap-3">
           <div class="relative">
             <img [src]="currentSong.cover" class="w-14 h-14 rounded-lg shadow-lg object-cover" />
-            <!-- Visualizador de música en la imagen -->
+            <!-- Visualizador de música que ocupa todo el ancho de la imagen -->
             <div class="absolute inset-0 rounded-lg overflow-hidden bg-black/20">
-              <div class="flex items-end h-full px-1 gap-px">
+              <div class="flex items-end h-full w-full justify-between px-1">
                 <div *ngFor="let bar of visualizerBars; let i = index" 
-                     class="bg-gradient-to-t from-cyan-400 to-blue-500 rounded-sm transition-all duration-100"
-                     [style.width.px]="2"
+                     class="bg-gradient-to-t from-cyan-400 to-blue-500 rounded-sm transition-all duration-100 flex-1 mx-px"
                      [style.height.%]="bar"
-                     [style.animation-delay.ms]="i * 50">
+                     [style.animation-delay.ms]="i * 30">
                 </div>
               </div>
             </div>
@@ -129,8 +128,8 @@ import { Song } from './models/song';
         </div>
 
         <div class="flex items-center gap-4">
-          <!-- Volumen con visualización -->
-          <div class="relative group">
+          <!-- Volumen nivelado con la barra de progreso -->
+          <div class="flex items-center gap-2">
             <button (click)="toggleMute.emit()" 
                     class="p-2 text-gray-300 hover:text-white transition-all duration-200 hover:scale-110"
                     [class.text-red-400]="volume === 0">
@@ -141,13 +140,11 @@ import { Song } from './models/song';
               </svg>
             </button>
             
-            <!-- Barra de volumen con visualización -->
+            <!-- Barra de volumen nivelada -->
             <div class="relative w-28">
               <div class="h-2 bg-gray-700 rounded-lg overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-green-400 to-cyan-400 transition-all duration-200 relative"
+                <div class="h-full bg-gradient-to-r from-green-400 to-cyan-400 transition-all duration-200"
                      [style.width.%]="volume * 100">
-                  <!-- Efecto de brillo en el volumen -->
-                  <div class="absolute right-0 top-0 h-full w-4 bg-gradient-to-l from-white/30 to-transparent"></div>
                 </div>
               </div>
               <input type="range" 
@@ -157,16 +154,6 @@ import { Song } from './models/song';
                      [value]="volume" 
                      (input)="onVolume($event)" 
                      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-            </div>
-            
-            <!-- Visualizador de volumen con barras -->
-            <div class="absolute -top-8 left-0 right-0 flex items-end justify-center gap-px opacity-0 group-hover:opacity-100 transition-all duration-200">
-              <div *ngFor="let bar of volumeBars; let i = index" 
-                   class="bg-gradient-to-t from-green-400 to-cyan-400 rounded-sm transition-all duration-100"
-                   [style.width.px]="2"
-                   [style.height.px]="bar"
-                   [style.opacity]="i < (volume * volumeBars.length) ? 1 : 0.3">
-              </div>
             </div>
           </div>
 
@@ -182,7 +169,7 @@ import { Song } from './models/song';
             <option value="2">2x</option>
           </select>
 
-          <!-- Botón de cola -->
+          <!-- Botón de cola sin indicador numérico -->
           <div class="relative">
             <button (click)="toggleQueue()" 
                     class="p-2 text-gray-300 hover:text-white transition-all duration-200 group relative hover:scale-110" 
@@ -191,11 +178,6 @@ import { Song } from './models/song';
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:scale-110 transition-transform">
                 <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
               </svg>
-              <!-- Indicador de cantidad en cola -->
-              <div *ngIf="queueSongs.length > 0" 
-                   class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                {{ queueSongs.length }}
-              </div>
             </button>
           </div>
         </div>
@@ -209,17 +191,8 @@ import { Song } from './models/song';
         50% { height: 80%; }
       }
       
-      @keyframes volumePulse {
-        0%, 100% { height: 4px; }
-        50% { height: 16px; }
-      }
-      
       .visualizer-bar {
         animation: visualizerPulse 0.8s ease-in-out infinite;
-      }
-      
-      .volume-bar {
-        animation: volumePulse 0.6s ease-in-out infinite;
       }
       
       /* Estilos para las barras del visualizador */
@@ -227,8 +200,9 @@ import { Song } from './models/song';
         display: flex;
         align-items: end;
         height: 100%;
+        width: 100%;
+        justify-content: space-between;
         padding: 0 2px;
-        gap: 1px;
       }
       
       /* Efecto de partículas en el progreso */
@@ -281,7 +255,6 @@ export class PlayerComponent implements AfterViewInit {
 
   showQueue = signal(false);
   visualizerBars: number[] = [];
-  volumeBars: number[] = [];
   private animationFrameId?: number;
 
   ngAfterViewInit() {
@@ -296,11 +269,8 @@ export class PlayerComponent implements AfterViewInit {
   }
 
   private initializeVisualizers() {
-    // Inicializar barras del visualizador de música (12 barras)
-    this.visualizerBars = Array(12).fill(0).map(() => Math.random() * 60 + 20);
-    
-    // Inicializar barras del visualizador de volumen (8 barras)
-    this.volumeBars = Array(8).fill(0).map((_, i) => 4 + (i * 2));
+    // Inicializar más barras del visualizador para ocupar todo el ancho (20 barras)
+    this.visualizerBars = Array(20).fill(0).map(() => Math.random() * 60 + 20);
   }
 
   private startAnimations() {
@@ -316,13 +286,6 @@ export class PlayerComponent implements AfterViewInit {
           return Math.max(10, bar * 0.95);
         });
       }
-      
-      // Animar barras de volumen basadas en el nivel actual
-      this.volumeBars = this.volumeBars.map((_, i) => {
-        const baseHeight = 4 + (i * 1.5);
-        const volumeMultiplier = this.volume * (Math.random() * 0.5 + 0.5);
-        return baseHeight * (1 + volumeMultiplier);
-      });
       
       this.animationFrameId = requestAnimationFrame(animate);
     };

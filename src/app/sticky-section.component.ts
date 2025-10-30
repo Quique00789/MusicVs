@@ -1,12 +1,13 @@
-import { Component, Input, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, OnDestroy, AfterViewInit, ElementRef, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { SmoothScrollService } from './services/smooth-scroll.service';
 
 @Component({
   selector: 'app-sticky-section',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section [id]="'sticky-'+title" class="relative min-h-screen flex items-center py-32">
+  <section #sectionRef [id]="'sticky-'+title" class="relative min-h-screen flex items-center py-32">
       <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center" [ngClass]="reverse ? 'md:flex-row-reverse' : ''">
         <div [attr.data-aos]="reverse ? 'fade-left' : 'fade-right'" data-aos-duration="1000">
           <h2 class="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">{{ title }}</h2>
@@ -23,20 +24,50 @@ import { CommonModule } from '@angular/common';
     </section>
   `
 })
-export class StickySectionComponent {
+export class StickySectionComponent implements AfterViewInit, OnDestroy {
   @Input() title = '';
   @Input() description = '';
   @Input() imageUrl = '';
   @Input() reverse = false;
+  @ViewChild('sectionRef', { static: false }) sectionRef!: ElementRef<HTMLElement>;
 
   scrollProgress = 0;
+  private rafId: number | null = null;
+  private isBrowser = false;
+  private unsubscribeScroll: (() => void) | null = null;
 
-  @HostListener('window:scroll') onScroll() {
-    const section = document.getElementById('sticky-' + this.title);
-    if (section) {
-      const rect = section.getBoundingClientRect();
-      const progress = Math.max(0, Math.min(1, (window.innerHeight - rect.top) / window.innerHeight));
-      this.scrollProgress = progress;
+  constructor(private smoothScroll: SmoothScrollService, @Inject(PLATFORM_ID) private platformId: Object) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+  }
+
+  ngAfterViewInit(): void {
+    if (!this.isBrowser) return; // Evitar requestAnimationFrame en SSR
+    // Intentar suscribirse al evento de scroll proporcionado por SmoothScrollService (Lenis)
+    this.updateProgress(); // valor inicial
+    this.unsubscribeScroll = this.smoothScroll.onScroll(() => {
+      this.updateProgress();
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (!this.isBrowser) return;
+    if (this.unsubscribeScroll) {
+      this.unsubscribeScroll();
+      this.unsubscribeScroll = null;
     }
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  private updateProgress() {
+    const sectionEl = this.sectionRef?.nativeElement || document.getElementById('sticky-' + this.title);
+    if (!sectionEl) return;
+
+    // getBoundingClientRect sigue funcionando con Lenis cuando ScrollTrigger scrollerProxy está configurado
+    const rect = sectionEl.getBoundingClientRect();
+    const progress = Math.max(0, Math.min(1, (window.innerHeight - rect.top) / window.innerHeight));
+    this.scrollProgress = progress;
   }
 }

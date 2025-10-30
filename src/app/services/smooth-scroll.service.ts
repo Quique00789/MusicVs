@@ -8,6 +8,7 @@ export class SmoothScrollService {
   private gsap: any = null;
   private ScrollTrigger: any = null;
   private isInitialized = false;
+  private pendingScrollCallbacks: Array<(e: any) => void> = [];
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     if (isPlatformBrowser(this.platformId)) {
@@ -37,9 +38,18 @@ export class SmoothScrollService {
       this.lenis = new Lenis({
         duration: 0.8,
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
+  // Desactivar smoothWheel en la rueda/trackpad para evitar comportamiento pegajoso
+  smoothWheel: false,
         orientation: 'vertical'
       });
+
+      // Registrar callbacks pendientes si los hay
+      if (this.pendingScrollCallbacks.length && this.lenis) {
+        this.pendingScrollCallbacks.forEach(cb => {
+          try { this.lenis.on('scroll', cb); } catch (e) { /* ignore */ }
+        });
+        this.pendingScrollCallbacks = [];
+      }
 
       // RAF loop para Lenis
       const raf = (time: number) => {
@@ -87,6 +97,31 @@ export class SmoothScrollService {
     } catch (error) {
       console.warn('Failed to initialize smooth scroll libraries:', error);
     }
+  }
+
+  // Permite que componentes se suscriban al evento de scroll de Lenis.
+  // Devuelve una función para desuscribirse.
+  onScroll(cb: (e: any) => void): () => void {
+    if (!isPlatformBrowser(this.platformId)) return () => {};
+
+    if (this.lenis) {
+      try {
+        this.lenis.on('scroll', cb);
+      } catch (e) {
+        // ignore
+      }
+
+      return () => {
+        try { this.lenis.off && this.lenis.off('scroll', cb); } catch (e) { /* ignore */ }
+      };
+    }
+
+    // Si lenis aún no está inicializado, almacenar callback para registrarlo después
+    this.pendingScrollCallbacks.push(cb);
+    return () => {
+      const i = this.pendingScrollCallbacks.indexOf(cb);
+      if (i >= 0) this.pendingScrollCallbacks.splice(i, 1);
+    };
   }
 
   // Método para scroll suave a elemento específico

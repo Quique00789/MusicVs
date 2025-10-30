@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PlayerComponent } from './player.component';
 import { NowPlayingSheetComponent } from './now-playing-sheet.component';
@@ -48,6 +48,7 @@ import { AudioPlayerService } from './services/audio-player.service';
   `
 })
 export class PlayerHostComponent {
+  // Use Angular signals API
   open = signal(false);
   constructor(public aps: AudioPlayerService) {}
   noop() {}

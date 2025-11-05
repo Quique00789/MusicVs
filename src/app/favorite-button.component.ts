@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, inject, ChangeDetectorRef, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { FavoritesService } from './services/favorites.service';
@@ -8,6 +8,7 @@ import { AuthStateService } from './services/auth-state.service';
   selector: 'app-favorite-button',
   standalone: true,
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button 
       class="favorite-button"
@@ -34,187 +35,83 @@ import { AuthStateService } from './services/auth-state.service';
     </button>
   `,
   styles: [`
-    .favorite-button {
-      background: none;
-      border: none;
-      color: #71717a;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 0.375rem;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      width: 40px;
-      height: 40px;
-    }
-
-    .favorite-button:hover:not(:disabled) {
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.1);
-      transform: scale(1.1);
-    }
-
-    .favorite-button.is-favorite {
-      color: #ef4444;
-    }
-
-    .favorite-button.is-favorite .heart-icon {
-      animation: heartbeat 0.6s ease-in-out;
-    }
-
-    .favorite-button:disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
-    }
-
-    .favorite-button.loading {
-      color: #6366f1;
-    }
-
-    .heart-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .loading-spinner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    @keyframes heartbeat {
-      0% {
-        transform: scale(1);
-      }
-      25% {
-        transform: scale(1.2);
-      }
-      50% {
-        transform: scale(1);
-      }
-      75% {
-        transform: scale(1.1);
-      }
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    /* Variante pequeña */
-    .favorite-button.small {
-      width: 32px;
-      height: 32px;
-      padding: 0.375rem;
-    }
-
-    .favorite-button.small svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    /* Variante grande */
-    .favorite-button.large {
-      width: 48px;
-      height: 48px;
-      padding: 0.75rem;
-    }
-
-    .favorite-button.large svg {
-      width: 24px;
-      height: 24px;
-    }
+    .favorite-button { background: none; border: none; color: #71717a; cursor: pointer; padding: 0.5rem; border-radius: 0.375rem; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; position: relative; width: 40px; height: 40px; }
+    .favorite-button:hover:not(:disabled) { color: #ef4444; background: rgba(239, 68, 68, 0.1); transform: scale(1.1); }
+    .favorite-button.is-favorite { color: #ef4444; }
+    .favorite-button.is-favorite .heart-icon { animation: heartbeat 0.6s ease-in-out; }
+    .favorite-button:disabled { cursor: not-allowed; opacity: 0.5; }
+    .favorite-button.loading { color: #6366f1; }
+    .heart-icon, .loading-spinner { display: flex; align-items: center; justify-content: center; }
+    @keyframes heartbeat { 0% { transform: scale(1); } 25% { transform: scale(1.2); } 50% { transform: scale(1); } 75% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    .favorite-button.small { width: 32px; height: 32px; padding: 0.375rem; }
+    .favorite-button.small svg { width: 16px; height: 16px; }
+    .favorite-button.large { width: 48px; height: 48px; padding: 0.75rem; }
+    .favorite-button.large svg { width: 24px; height: 24px; }
   `]
 })
 export class FavoriteButtonComponent implements OnInit, OnDestroy {
-  @Input() song!: {
-    id: string;
-    title: string;
-    artist: string;
-    duration?: number;
-    cover?: string;
-  };
-  
+  @Input() song!: { id: string; title: string; artist: string; duration?: number; cover?: string; };
   @Input() size: 'small' | 'normal' | 'large' = 'normal';
   @Output() favoriteChanged = new EventEmitter<{ isFavorite: boolean; success: boolean }>();
 
   private destroy$ = new Subject<void>();
   private favoritesService = inject(FavoritesService);
   private authStateService = inject(AuthStateService);
+  private cdr = inject(ChangeDetectorRef);
+  private zone = inject(NgZone);
 
   isFavorite = false;
   isLoading = false;
   isAuthenticated = false;
 
   ngOnInit() {
-    if (!this.song?.id) {
-      console.warn('FavoriteButtonComponent: song prop is required');
-      return;
-    }
+    if (!this.song?.id) return;
 
-    // Verificar estado de autenticación
-    this.authStateService.user$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(user => {
-      this.isAuthenticated = !!user;
-      if (user) {
-        this.updateFavoriteStatus();
-      }
+    this.authStateService.user$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      this.zone.run(() => {
+        this.isAuthenticated = !!user;
+        if (user) this.updateFavoriteStatus();
+        this.cdr.markForCheck();
+      });
     });
 
-    // Escuchar cambios en favoritos
-    this.favoritesService.favoriteIds$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(favoriteIds => {
-      this.isFavorite = favoriteIds.has(this.song.id);
+    this.favoritesService.favoriteIds$.pipe(takeUntil(this.destroy$)).subscribe(favoriteIds => {
+      this.zone.run(() => {
+        this.isFavorite = favoriteIds.has(this.song.id);
+        this.cdr.markForCheck();
+      });
     });
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
+  ngOnDestroy() { this.destroy$.next(); this.destroy$.complete(); }
 
   private updateFavoriteStatus() {
     this.isFavorite = this.favoritesService.isFavorite(this.song.id);
   }
 
   async toggleFavorite() {
-    if (!this.isAuthenticated) {
-      // Podrías emitir un evento para mostrar modal de login
-      return;
-    }
+    if (!this.isAuthenticated || this.isLoading) return;
 
-    if (this.isLoading) return;
-
-    this.isLoading = true;
+    this.zone.run(() => { this.isLoading = true; this.cdr.markForCheck(); });
 
     try {
       const result = await this.favoritesService.toggleFavorite(this.song);
-      
-      if (result.success) {
-        this.isFavorite = result.isFavorite;
-        this.favoriteChanged.emit({ 
-          isFavorite: result.isFavorite, 
-          success: true 
-        });
-      } else {
-        console.error('Error al cambiar favorito:', result.error);
-        this.favoriteChanged.emit({ 
-          isFavorite: this.isFavorite, 
-          success: false 
-        });
-      }
+      this.zone.run(() => {
+        if (result.success) {
+          this.isFavorite = result.isFavorite;
+          this.favoriteChanged.emit({ isFavorite: result.isFavorite, success: true });
+        } else {
+          this.favoriteChanged.emit({ isFavorite: this.isFavorite, success: false });
+        }
+        this.cdr.markForCheck();
+      });
     } catch (error) {
-      console.error('Error en toggleFavorite:', error);
-      this.favoriteChanged.emit({ 
-        isFavorite: this.isFavorite, 
-        success: false 
+      this.zone.run(() => {
+        this.favoriteChanged.emit({ isFavorite: this.isFavorite, success: false });
+        this.cdr.markForCheck();
       });
     } finally {
-      this.isLoading = false;
+      this.zone.run(() => { this.isLoading = false; this.cdr.markForCheck(); });
     }
   }
 }

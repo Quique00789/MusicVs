@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { BehaviorSubject, Observable } from 'rxjs';
+import type { User } from '@supabase/supabase-js';
 
 export interface FavoriteSong {
   id: string;
@@ -46,7 +47,7 @@ export class FavoritesService {
       }
 
       this.favoritesSubject.next(data || []);
-      const favoriteIds = new Set((data || []).map(fav => fav.song_id));
+      const favoriteIds = new Set<string>((data || []).map((fav: FavoriteSong) => fav.song_id));
       this.favoriteIdsSubject.next(favoriteIds);
     } catch (error) {
       console.error('Error in loadUserFavorites:', error);
@@ -86,7 +87,7 @@ export class FavoritesService {
 
       // Actualizar el estado local
       const currentFavorites = this.favoritesSubject.value;
-      this.favoritesSubject.next([data, ...currentFavorites]);
+      this.favoritesSubject.next([data as FavoriteSong, ...currentFavorites]);
       
       const currentIds = this.favoriteIdsSubject.value;
       currentIds.add(song.id);

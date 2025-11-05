@@ -1,11 +1,13 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Song } from './models/song';
+import { FavoriteButtonComponent } from './favorite-button.component';
+import { FavoritesService } from './services/favorites.service';
 
 @Component({
   selector: 'song-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FavoriteButtonComponent],
   template: `
     <div class="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl overflow-hidden backdrop-blur-sm border border-white/5 hover:border-cyan-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20" data-aos="fade-up" data-aos-duration="800">
       <div class="relative aspect-square overflow-hidden">
@@ -17,9 +19,13 @@ import { Song } from './models/song';
           <span class="text-white font-bold">▶</span>
         </button>
 
-        <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-500">
-          ♥
-        </button>
+        <div class="absolute top-4 right-4">
+          <app-favorite-button
+            [song]="{ id: song.id, title: song.title, artist: song.artist, duration: song.durationSeconds || 0, cover: song.cover }"
+            size="small"
+            (favoriteChanged)="onFavoriteChanged($event)"
+          />
+        </div>
       </div>
 
       <div class="p-5">
@@ -43,4 +49,14 @@ export class SongCardComponent {
   @Input() song!: Song;
   @Input() isPlaying = false;
   @Output() play = new EventEmitter<Song>();
+
+  private favorites = inject(FavoritesService);
+
+  onFavoriteChanged(_e: { isFavorite: boolean; success: boolean }) {
+    // Carga perezosa de la lista si se requiere, nada crítico aquí.
+    // El servicio ya actualiza el estado global de favoritos.
+    if (!_e.success) {
+      console.error('No se pudo actualizar favorito');
+    }
+  }
 }

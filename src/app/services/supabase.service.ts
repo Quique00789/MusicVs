@@ -32,6 +32,11 @@ export class SupabaseService {
     return this.supabase;
   }
 
+  // Compatibility getter for new services
+  get client(): SupabaseClient {
+    return this.supabase;
+  }
+
   // Helper to get current user with proper error handling
   async getCurrentUser() {
     try {

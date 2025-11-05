@@ -6,11 +6,12 @@ import { HeaderComponent } from './header.component';
 import { PlayerComponent } from './player.component';
 import { AudioPlayerService } from './services/audio-player.service';
 import { songs } from './data/songs';
+import { ScrollToTopComponent } from './scroll-to-top/scroll-to-top.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterModule, HeaderComponent, PlayerComponent],
+  imports: [CommonModule, RouterModule, HeaderComponent, PlayerComponent, ScrollToTopComponent],
   template: `
     <app-header></app-header>
 
@@ -18,6 +19,9 @@ import { songs } from './data/songs';
     <div class="min-h-screen pb-28">
       <router-outlet></router-outlet>
     </div>
+
+    <!-- Scroll to Top -->
+    <app-scroll-to-top></app-scroll-to-top>
 
     <!-- Persistent Global Player: siempre montado -->
     <div class="fixed bottom-4 left-4 right-4 z-50 pointer-events-none transition-all duration-300 ease-in-out" [class.opacity-0]="hidden()" [class.translate-y-4]="hidden()">

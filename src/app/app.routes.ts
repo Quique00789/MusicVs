@@ -5,15 +5,15 @@ import { DiscoverComponent } from './discover.component';
 import { PlaylistsComponent } from './playlists.component';
 import { ArtistsComponent } from './artists.component';
 import { ArtistDetailComponent } from './artist-detail.component';
-import { FavoritesComponent } from './favorites.component';
+import { FavoritesPageComponent } from './favorites.page';
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent },  // Ruta raíz
+  { path: '', component: HomeComponent },
   { path: 'auth', loadComponent: () => AuthComponent },
-  { path: 'discover', component: DiscoverComponent },  // Ruta Discover
-  { path: 'playlists', component: PlaylistsComponent },  // Nueva ruta Playlists
-  { path: 'favorites', component: FavoritesComponent },  // Nueva ruta Favoritos
-  { path: 'artists', component: ArtistsComponent },  // Nueva ruta para artistas
-  { path: 'artist/:id', component: ArtistDetailComponent },  // Nueva ruta para detalle de artista
-  { path: '**', redirectTo: '' }  // Redirección para rutas no encontradas
+  { path: 'discover', component: DiscoverComponent },
+  { path: 'playlists', component: PlaylistsComponent },
+  { path: 'favorites', component: FavoritesPageComponent },
+  { path: 'artists', component: ArtistsComponent },
+  { path: 'artist/:id', component: ArtistDetailComponent },
+  { path: '**', redirectTo: '' }
 ];

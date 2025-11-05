@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { BehaviorSubject, Observable } from 'rxjs';
+import type { User } from '@supabase/supabase-js';
 
 export interface UserPlaylist {
   id: string;
@@ -59,7 +60,7 @@ export class UserPlaylistsService {
       }
 
       // Procesar el conteo de canciones
-      const playlistsWithCount = (data || []).map(playlist => ({
+      const playlistsWithCount = (data || []).map((playlist: any) => ({
         ...playlist,
         song_count: playlist.song_count?.[0]?.count || 0
       }));
@@ -93,7 +94,7 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
-      const newPlaylist = { ...data, song_count: 0 };
+      const newPlaylist = { ...data, song_count: 0 } as UserPlaylist;
       
       // Actualizar el estado local
       const currentPlaylists = this.playlistsSubject.value;

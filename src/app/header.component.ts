@@ -37,6 +37,15 @@ import { AuthStateService } from './services/auth-state.service';
         </nav>
 
         <div class="flex items-center gap-4 relative">
+          <!-- Botón de Favoritos al lado del perfil -->
+          <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300"
+                  aria-label="Favoritos"
+                  (click)="goFavorites()">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+            </svg>
+          </button>
+
           <!-- User Menu (When Logged In) -->
           <ng-container *ngIf="user; else loggedOut">
             <!-- User Avatar and Name -->
@@ -102,13 +111,6 @@ import { AuthStateService } from './services/auth-state.service';
             </a>
           </ng-template>
 
-          <!-- Action Buttons -->
-          <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300 hidden sm:block">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-            </svg>
-          </button>
-          
           <!-- Mobile Menu Toggle -->
           <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300 md:hidden"
                   (click)="toggleMobileMenu()">
@@ -139,40 +141,20 @@ import { AuthStateService } from './services/auth-state.service';
              routerLinkActive="active-mobile-link"
              (click)="closeMobileMenu()"
              class="block py-2 text-gray-300 hover:text-white transition-colors">Artists</a>
+          <a routerLink="/favorites" 
+             routerLinkActive="active-mobile-link"
+             (click)="closeMobileMenu()"
+             class="block py-2 text-gray-300 hover:text-white transition-colors">Favoritos</a>
         </nav>
       </div>
     </header>
   `,
   styles: [`
-    .nav-link {
-      position: relative;
-      padding: 0.5rem 0;
-    }
-
-    .nav-link:hover {
-      color: #06b6d4;
-    }
-
-    .active-link {
-      color: #06b6d4 !important;
-      position: relative;
-    }
-
-    .active-link::after {
-      content: '';
-      position: absolute;
-      bottom: -4px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #06b6d4, #3b82f6);
-      border-radius: 1px;
-    }
-
-    .active-mobile-link {
-      color: #06b6d4 !important;
-      font-weight: 600;
-    }
+    .nav-link { position: relative; padding: 0.5rem 0; }
+    .nav-link:hover { color: #06b6d4; }
+    .active-link { color: #06b6d4 !important; position: relative; }
+    .active-link::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #06b6d4, #3b82f6); border-radius: 1px; }
+    .active-mobile-link { color: #06b6d4 !important; font-weight: 600; }
   `]
 })
 export class HeaderComponent implements OnInit, OnDestroy {
@@ -189,107 +171,29 @@ export class HeaderComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    console.log('Header component initializing...');
-    
     this.unsub = this.authState.subscribe((u) => {
-      console.log('Header received user update:', u?.id || 'none', u?.email || 'no email');
-      
-      // Ensure we're in Angular zone for proper change detection
       this.ngZone.run(() => {
         this.user = u;
-        if (!u) {
-          this.isUserMenuOpen = false;
-        }
-        
-        // Force change detection
+        if (!u) { this.isUserMenuOpen = false; }
         this.cdr.detectChanges();
-        
-        console.log('Header UI updated with user:', this.user?.email || 'none');
       });
     });
   }
 
-  ngOnDestroy() {
-    if (this.unsub) {
-      this.unsub();
-    }
-  }
+  ngOnDestroy() { if (this.unsub) this.unsub(); }
 
-  get userName(): string {
-    if (!this.user) return '';
-    return this.user.user_metadata?.full_name || 
-           this.user.user_metadata?.name || 
-           this.user.email?.split('@')[0] || 
-           'Usuario';
-  }
+  get userName(): string { if (!this.user) return ''; return this.user.user_metadata?.full_name || this.user.user_metadata?.name || this.user.email?.split('@')[0] || 'Usuario'; }
+  get userEmail(): string { return this.user?.email || ''; }
+  get userAvatar(): string | null { return this.user?.user_metadata?.avatar_url || this.user?.user_metadata?.picture || null; }
+  getInitials(): string { const name = this.userName; if (name === 'Usuario') return 'U'; const parts = name.split(' '); return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.substring(0,2).toUpperCase(); }
 
-  get userEmail(): string {
-    return this.user?.email || '';
-  }
+  toggleUserMenu() { this.isUserMenuOpen = !this.isUserMenuOpen; this.cdr.detectChanges(); }
+  toggleMobileMenu() { this.isMobileMenuOpen = !this.isMobileMenuOpen; this.cdr.detectChanges(); }
+  closeMobileMenu() { this.isMobileMenuOpen = false; this.cdr.detectChanges(); }
+  @HostListener('document:click', ['$event']) onDocumentClick(event: Event) { const target = event.target as HTMLElement; if (!target.closest('.relative')) { this.isUserMenuOpen = false; this.cdr.detectChanges(); } }
 
-  get userAvatar(): string | null {
-    return this.user?.user_metadata?.avatar_url || 
-           this.user?.user_metadata?.picture || 
-           null;
-  }
+  goHome() { this.router.navigate(['/']); this.closeMobileMenu(); }
+  goFavorites() { this.router.navigate(['/favorites']); }
 
-  getInitials(): string {
-    const name = this.userName;
-    if (name === 'Usuario') return 'U';
-    
-    const parts = name.split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  }
-
-  toggleUserMenu() {
-    this.isUserMenuOpen = !this.isUserMenuOpen;
-    this.cdr.detectChanges();
-  }
-
-  toggleMobileMenu() {
-    this.isMobileMenuOpen = !this.isMobileMenuOpen;
-    this.cdr.detectChanges();
-  }
-
-  closeMobileMenu() {
-    this.isMobileMenuOpen = false;
-    this.cdr.detectChanges();
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: Event) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.relative')) {
-      this.isUserMenuOpen = false;
-      this.cdr.detectChanges();
-    }
-  }
-
-  goHome() {
-    this.router.navigate(['/']);
-    this.closeMobileMenu();
-  }
-
-  goToArtists() {
-    this.router.navigate(['/artists']);
-  }
-
-  async logout() {
-    this.isUserMenuOpen = false;
-    this.cdr.detectChanges();
-    
-    try {
-      console.log('Header: starting logout process...');
-      await this.authState.signOut();
-      
-      console.log('Header: logout successful, redirecting...');
-      // Redirect to home after logout
-      await this.router.navigate(['/']);
-    } catch (error) {
-      console.error('Header: error during logout:', error);
-    }
-  }
+  async logout() { this.isUserMenuOpen = false; this.cdr.detectChanges(); try { await this.authState.signOut(); await this.router.navigate(['/']); } catch (e) { console.error(e); } }
 }

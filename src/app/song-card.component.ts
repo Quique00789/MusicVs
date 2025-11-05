@@ -21,7 +21,7 @@ import { FavoritesService } from './services/favorites.service';
 
         <div class="absolute top-4 right-4">
           <app-favorite-button
-            [song]="{ id: song.id, title: song.title, artist: song.artist, duration: song.durationSeconds || 0, cover: song.cover }"
+            [song]="{ id: song.id, title: song.title, artist: song.artist, duration: parseDuration(song.duration), cover: song.cover }"
             size="small"
             (favoriteChanged)="onFavoriteChanged($event)"
           />
@@ -53,10 +53,19 @@ export class SongCardComponent {
   private favorites = inject(FavoritesService);
 
   onFavoriteChanged(_e: { isFavorite: boolean; success: boolean }) {
-    // Carga perezosa de la lista si se requiere, nada crítico aquí.
-    // El servicio ya actualiza el estado global de favoritos.
     if (!_e.success) {
       console.error('No se pudo actualizar favorito');
     }
+  }
+
+  // Convierte 'mm:ss' o 'm:ss' a segundos
+  parseDuration(d?: string): number {
+    if (!d) return 0;
+    const parts = d.split(':');
+    if (parts.length !== 2) return 0;
+    const m = parseInt(parts[0], 10);
+    const s = parseInt(parts[1], 10);
+    if (isNaN(m) || isNaN(s)) return 0;
+    return m * 60 + s;
   }
 }

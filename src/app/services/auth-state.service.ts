@@ -1,16 +1,22 @@
 import { Injectable, NgZone, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { SupabaseService } from './supabase.service';
+import type { User } from '@supabase/supabase-js';
 
-type Subscriber = (user: any) => void;
+type Subscriber = (user: User | null) => void;
 
 @Injectable({ providedIn: 'root' })
 export class AuthStateService {
-  private user: any = null;
+  private user: User | null = null;
   private subs = new Set<Subscriber>();
   private initialized = false;
   private isBrowser: boolean;
   private authSubscription: any = null;
+  
+  // Observable para compatibilidad con nuevos componentes
+  private userSubject = new BehaviorSubject<User | null>(null);
+  public user$: Observable<User | null> = this.userSubject.asObservable();
 
   constructor(
     private supabase: SupabaseService, 
@@ -59,10 +65,13 @@ export class AuthStateService {
     this.initialized = true;
   }
 
-  private setUser(u: any) {
+  private setUser(u: User | null) {
     const userChanged = this.user?.id !== u?.id;
     const oldUser = this.user;
     this.user = u;
+    
+    // Update BehaviorSubject for reactive components
+    this.userSubject.next(u);
     
     if (userChanged) {
       console.log('User state changed from:', oldUser?.id || 'none', 'to:', u?.id || 'none');
@@ -92,7 +101,7 @@ export class AuthStateService {
     };
   }
 
-  getCurrentUser() { 
+  getCurrentUser(): User | null { 
     return this.user; 
   }
   

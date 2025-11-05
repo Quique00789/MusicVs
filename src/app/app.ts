@@ -1,11 +1,10 @@
 // src/app/app.ts
 import { Component, signal } from '@angular/core';
-import { RouterModule, Router, NavigationEnd } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HeaderComponent } from './header.component';
 import { PlayerComponent } from './player.component';
 import { AudioPlayerService } from './services/audio-player.service';
-import { SmoothScrollService } from './services/smooth-scroll.service';
 import { songs } from './data/songs';
 
 @Component({
@@ -67,17 +66,8 @@ export class App {
   hidden = signal(false);
   songs = songs;
 
-  constructor(public audio: AudioPlayerService, private router: Router, private smoothScroll: SmoothScrollService) {
-    // Refresh scroll libraries after navigation so ScrollTrigger/Lenis recalc sizes
-    this.router.events.subscribe((ev) => {
-      if (ev instanceof NavigationEnd) {
-        try {
-          this.smoothScroll.refreshScrollTrigger();
-        } catch (e) {
-          console.warn('Error refreshing smooth scroll after navigation', e);
-        }
-      }
-    });
+  constructor(public audio: AudioPlayerService) {
+    // No-op: removed smooth scroll integration (Lenis/GSAP) per request
   }
 
   togglePlayer(ev: Event) {

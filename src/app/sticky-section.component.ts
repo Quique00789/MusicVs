@@ -1,6 +1,5 @@
 import { Component, Input, OnDestroy, AfterViewInit, ElementRef, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { SmoothScrollService } from './services/smooth-scroll.service';
 
 @Component({
   selector: 'app-sticky-section',
@@ -34,27 +33,32 @@ export class StickySectionComponent implements AfterViewInit, OnDestroy {
   scrollProgress = 0;
   private rafId: number | null = null;
   private isBrowser = false;
-  private unsubscribeScroll: (() => void) | null = null;
+  private _onScroll: (() => void) | null = null;
 
-  constructor(private smoothScroll: SmoothScrollService, @Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     this.isBrowser = isPlatformBrowser(this.platformId);
+    this._onScroll = () => this.updateProgress();
   }
 
   ngAfterViewInit(): void {
     if (!this.isBrowser) return; // Evitar requestAnimationFrame en SSR
-    // Intentar suscribirse al evento de scroll proporcionado por SmoothScrollService (Lenis)
+    // Suscribirse al scroll nativo para actualizar el progreso sin Lenis
     this.updateProgress(); // valor inicial
-    this.unsubscribeScroll = this.smoothScroll.onScroll(() => {
-      this.updateProgress();
-    });
+    try {
+      window.addEventListener('scroll', this._onScroll as EventListener, { passive: true });
+    } catch (e) {
+      // ignore in non-browser or restricted envs
+    }
   }
 
   ngOnDestroy(): void {
     if (!this.isBrowser) return;
-    if (this.unsubscribeScroll) {
-      this.unsubscribeScroll();
-      this.unsubscribeScroll = null;
-    }
+    try {
+      if (this._onScroll) {
+        window.removeEventListener('scroll', this._onScroll as EventListener);
+        this._onScroll = null;
+      }
+    } catch (e) { /* ignore */ }
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;

@@ -77,55 +77,7 @@ bootstrapApplication(App, appConfig)
         // ignore top-level errors
       }
 
-      // Initialize Lenis and GSAP ScrollTrigger (dynamic imports)
-      (async () => {
-        try {
-          const [{ default: Lenis }, gsapModule] = await Promise.all([
-            import('lenis'),
-            import('gsap')
-          ]);
-
-          const gsap: any = (gsapModule && (gsapModule.default || gsapModule));
-          const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-          if (gsap && ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
-
-          const lenis = new Lenis({
-            duration: 0.8,
-            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            smoothWheel: true,
-            orientation: 'vertical'
-          });
-
-          function raf(time: number) {
-            lenis.raf(time);
-            requestAnimationFrame(raf);
-          }
-          requestAnimationFrame(raf);
-
-          const scroller = (document.scrollingElement || document.documentElement) as HTMLElement;
-          (ScrollTrigger as any).scrollerProxy(scroller, {
-            scrollTop(value?: number) {
-              if (arguments.length) {
-                lenis.scrollTo(value as number);
-                return;
-              }
-              return scroller.scrollTop || window.pageYOffset;
-            },
-            getBoundingClientRect() {
-              return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
-            },
-            pinType: (scroller.style && scroller.style.transform) ? 'transform' : 'fixed'
-          });
-
-          if (lenis && typeof lenis.on === 'function') {
-            lenis.on('scroll', () => ScrollTrigger.update());
-          }
-
-          ScrollTrigger.refresh();
-        } catch (err) {
-          console.warn('Lenis/GSAP failed to initialize', err);
-        }
-      })();
+      // Smooth scrolling (Lenis) and GSAP/ScrollTrigger initialization removed
     }
   })
   .catch((err) => console.error(err));

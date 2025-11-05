@@ -31,6 +31,7 @@ export class AudioPlayerService {
   private retryCount = 0;
   private maxRetries = 3;
   private isInitialized = false;
+  private currentPlaylist: any[] = [];
 
   constructor(
     private supabaseService: SupabaseService,
@@ -300,6 +301,41 @@ export class AudioPlayerService {
   }
 
   /**
+   * Compatibility method for new components - plays a track with playlist support
+   */
+  async playTrack(track: any, playlist: any[] = [], index: number = 0) {
+    try {
+      // Store playlist for navigation
+      this.currentPlaylist = playlist;
+      this.currentIndex.set(index);
+      
+      // Convert track to Song format
+      const song: Song = {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        duration: this.formatTimeFromSeconds(track.duration || 0),
+        cover: track.cover,
+        audioPath: track.url || track.audioPath || `audio/${track.id}.mp3`,
+        requiresSignedUrl: false
+      };
+      
+      await this.playSong(song);
+    } catch (error) {
+      console.error('Error in playTrack:', error);
+      this.handleError('Error al reproducir la canción', error);
+    }
+  }
+
+  /**
+   * Compatibility method - returns current track info
+   */
+  getCurrentTrack(): { id: string } | null {
+    const song = this.currentSong();
+    return song ? { id: song.id } : null;
+  }
+
+  /**
    * Pausa o reanuda la reproducción
    */
   async togglePlay() {
@@ -446,6 +482,13 @@ export class AudioPlayerService {
   }
 
   /**
+   * Formatea segundos numéricos a string mm:ss
+   */
+  private formatTimeFromSeconds(seconds: number): string {
+    return this.formatTime(seconds);
+  }
+
+  /**
    * Verifica si el reproductor está listo
    */
   isReady(): boolean {
@@ -483,5 +526,6 @@ export class AudioPlayerService {
     this.isInitialized = false;
     this.lastPlayedUrl = '';
     this.retryCount = 0;
+    this.currentPlaylist = [];
   }
 }

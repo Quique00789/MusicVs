@@ -28,10 +28,10 @@ import { ScrollToTopComponent } from './scroll-to-top/scroll-to-top.component';
          [class.opacity-0]="hidden()" 
          [class.translate-y-4]="hidden()">
       <div class="pointer-events-auto relative">
-        <!-- Toggle button anclado al reproductor - solo visible cuando hay canción -->
+        <!-- Toggle button anclado al reproductor - solo visible cuando hay canción - LADO IZQUIERDO -->
         <button
           *ngIf="audio.currentSong() && !hidden()"
-          class="absolute -top-12 right-4 z-10 w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all duration-300 group"
+          class="absolute -top-12 left-4 z-10 w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all duration-300 group"
           (click)="togglePlayer($event)"
           [attr.aria-label]="'Ocultar reproductor'"
           [title]="'Ocultar reproductor'"

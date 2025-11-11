@@ -27,13 +27,10 @@ interface QueueItem extends Song {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="playlists-container">
-      <!-- Hero Section -->
       <div class="playlists-hero">
         <div class="hero-content">
           <h1 class="hero-title fade-in-up">Mis Playlists</h1>
           <p class="hero-subtitle fade-in-up">Organiza y disfruta tu música favorita</p>
-          
-          <!-- Create Playlist Button -->
           <button class="create-playlist-btn glass-morphism fade-in-up" (click)="toggleCreateModal()">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -41,14 +38,13 @@ interface QueueItem extends Song {
             Crear Playlist
           </button>
         </div>
-        <!-- Floating Elements -->
         <div class="floating-elements">
           <div class="floating-note note-1">♫</div>
           <div class="floating-note note-2">♪</div>
           <div class="floating-note note-3">♬</div>
         </div>
       </div>
-      <!-- Modal for creating playlist -->
+      <!-- Modal -->
       <div *ngIf="showCreateModal" class="modal-bg">
         <div class="modal glass-morphism">
           <h2 class="modal-title">Crear nueva Playlist</h2>
@@ -72,7 +68,6 @@ interface QueueItem extends Song {
         </div>
       </div>
       <div class="main-content">
-        <!-- Left Panel: Playlists Grid -->
         <div class="playlists-panel">
           <div class="section-header">
             <h2 class="section-title">Mis Playlists ({{ playlists.length }})</h2>
@@ -95,7 +90,6 @@ interface QueueItem extends Song {
               </button>
             </div>
           </div>
-          <!-- Playlists Grid/List -->
           <div class="playlists-content" [class.list-view]="viewMode === 'list'" [class.grid-view]="viewMode === 'grid'">
             <div 
               *ngFor="let playlist of playlists; trackBy: trackByPlaylist; let i = index"
@@ -113,7 +107,6 @@ interface QueueItem extends Song {
                     </svg>
                   </button>
                 </div>
-                <!-- Privacy Badge -->
                 <div class="privacy-badge" [class.public]="playlist.isPublic" [class.private]="!playlist.isPublic">
                   <svg *ngIf="playlist.isPublic" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -132,7 +125,6 @@ interface QueueItem extends Song {
                   <span class="duration" *ngIf="viewMode === 'grid'">{{ playlist.duration }}</span>
                 </div>
               </div>
-              <!-- Playlist Actions -->
               <div class="playlist-actions">
                 <button class="action-btn" (click)="togglePlaylistOptions(playlist, $event)" title="Más opciones">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,8 +135,9 @@ interface QueueItem extends Song {
             </div>
           </div>
         </div>
-        <!-- Right Panel permanece igual -->
-        <div class="queue-panel glass-morphism"> <!-- ... --> </div>
+        <div class="queue-panel glass-morphism">
+          <!-- Queue implementation remains unchanged -->
+        </div>
       </div>
     </div>
   `,
@@ -165,7 +158,6 @@ interface QueueItem extends Song {
     .save-btn:disabled {background:gray;cursor:not-allowed;}
     .cancel-btn {background:#373737;color:#e6eefc;padding:.7rem 1.4rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:.2s;}
     .modal-btn-close {position:absolute;top:10px;right:22px;font-size:2rem;background:none;color:#fff;border:none;}
-    /* resto de estilos siguen igual */
   `]
 })
 export class PlaylistsComponent implements OnInit {
@@ -177,10 +169,103 @@ export class PlaylistsComponent implements OnInit {
   isShuffled = false;
   showCreateModal = false;
   newPlaylist = { name: '', description: '', cover: '', isPublic: false };
-
-  playlists: Playlist[] = [ /* ... igual ... */ ];
-
+  playlists: Playlist[] = [
+    {
+      id: '1',
+      name: 'Mis Favoritos',
+      description: 'Las mejores canciones que no me canso de escuchar',
+      cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop',
+      songs: [...songs],
+      createdAt: '2024-01-15',
+      duration: this.calculatePlaylistDuration(songs),
+      isPublic: false
+    },
+    {
+      id: '2',
+      name: 'Para Trabajar',
+      description: 'Música instrumental para concentrarse',
+      cover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop',
+      songs: [songs[0], songs[2]],
+      createdAt: '2024-02-01',
+      duration: this.calculatePlaylistDuration([songs[0], songs[2]]),
+      isPublic: true
+    },
+    {
+      id: '3',
+      name: 'Relax',
+      description: 'Para relajarse después de un día largo',
+      cover: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop',
+      songs: [songs[1]],
+      createdAt: '2024-02-10',
+      duration: this.calculatePlaylistDuration([songs[1]]),
+      isPublic: false
+    },
+    {
+      id: '4',
+      name: 'DJ Valls Collection',
+      description: 'Toda la colección completa de DJ Valls',
+      cover: 'https://images.unsplash.com/photo-1571974599782-87624638275c?w=400&h=400&fit=crop',
+      songs: [...songs],
+      createdAt: '2024-01-01',
+      duration: this.calculatePlaylistDuration(songs),
+      isPublic: true
+    }
+  ];
   constructor(private cdr: ChangeDetectorRef) {}
   ngOnInit() {}
-  // ... resto igual ...
+  toggleCreateModal() {
+    this.showCreateModal = !this.showCreateModal;
+    if (!this.showCreateModal) {
+      this.newPlaylist = { name: '', description: '', cover: '', isPublic: false };
+    }
+  }
+  setViewMode(mode: 'grid' | 'list') {
+    this.viewMode = mode;
+    this.cdr.detectChanges();
+  }
+  trackByPlaylist(index: number, playlist: Playlist): string {
+    return playlist.id;
+  }
+  selectPlaylist(playlist: Playlist) {
+    this.selectedPlaylist = playlist;
+    this.cdr.detectChanges();
+  }
+  playPlaylist(playlist: Playlist, event: Event) {
+    event.stopPropagation();
+    this.selectedPlaylist = playlist;
+    this.queue = playlist.songs.map((song, index) => ({ ...song, queuePosition: index + 1, isCurrentlyPlaying: index === 0 }));
+    if (this.queue.length > 0) {
+      this.currentSong = this.queue[0];
+      this.isPlaying = true;
+      this.queue = this.queue.slice(1).map((song, index) => ({ ...song, queuePosition: index + 1, isCurrentlyPlaying: false }));
+    }
+    this.cdr.detectChanges();
+  }
+  togglePlaylistOptions(playlist: Playlist, event: Event) {
+    event.stopPropagation();
+    // Placeholder para futuras opciones
+    console.log('Playlist options for:', playlist.name);
+  }
+  createPlaylist() {
+    if (!this.newPlaylist.name) return;
+    const newPl: Playlist = {
+      id: 'pl_' + Math.floor(Math.random() * 1000000),
+      name: this.newPlaylist.name,
+      description: this.newPlaylist.description || '',
+      cover: this.newPlaylist.cover || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop',
+      songs: [],
+      createdAt: new Date().toISOString().slice(0, 10),
+      duration: '0:00',
+      isPublic: this.newPlaylist.isPublic
+    };
+    this.playlists.unshift(newPl);
+    this.toggleCreateModal();
+    this.cdr.detectChanges();
+  }
+  private calculatePlaylistDuration(songs: Song[]): string {
+    const totalMinutes = songs.length * 1.1;
+    const minutes = Math.floor(totalMinutes);
+    const seconds = Math.floor((totalMinutes - minutes) * 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
 }

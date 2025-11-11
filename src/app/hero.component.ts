@@ -16,7 +16,12 @@ import { CommonModule } from '@angular/common';
           Immerse yourself in a world of sound. Discover, play, and enjoy millions of songs.
         </p>
 
-        <button class="group relative px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full text-white font-semibold text-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-cyan-500/50 hover:scale-105" data-aos="zoom-in" data-aos-delay="400" data-aos-duration="1000">
+        <button 
+          (click)="scrollToTrending()"
+          class="group relative px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full text-white font-semibold text-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-cyan-500/50 hover:scale-105" 
+          data-aos="zoom-in" 
+          data-aos-delay="400" 
+          data-aos-duration="1000">
           <span class="relative z-10 flex items-center gap-2">Start Listening</span>
         </button>
       </div>
@@ -36,5 +41,13 @@ export class HeroComponent {
 
   @HostListener('window:scroll') onScroll() {
     this.scrollY = window.scrollY || 0;
+  }
+
+  scrollToTrending() {
+    const heroHeight = window.innerHeight;
+    window.scrollTo({
+      top: heroHeight,
+      behavior: 'smooth'
+    });
   }
 }

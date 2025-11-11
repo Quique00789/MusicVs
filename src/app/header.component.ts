@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { AuthStateService } from './services/auth-state.service';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-header',
@@ -11,13 +12,13 @@ import { AuthStateService } from './services/auth-state.service';
   template: `
     <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
       <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 cursor-pointer" (click)="goHome()">
           <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full flex items-center justify-center">
             <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M9 19V6l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <h1 class="text-2xl font-bold text-white cursor-pointer" (click)="goHome()">MusicVs</h1>
+          <h1 class="text-2xl font-bold text-white">MusicVs</h1>
         </div>
 
         <nav class="hidden md:flex items-center gap-8">
@@ -37,18 +38,15 @@ import { AuthStateService } from './services/auth-state.service';
         </nav>
 
         <div class="flex items-center gap-4 relative">
-          <!-- Botón de Favoritos al lado del perfil -->
           <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300"
                   aria-label="Favoritos"
-                  (click)="goFavorites()">
+                  (click)="handleFavoritesClick()">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
             </svg>
           </button>
 
-          <!-- User Menu (When Logged In) -->
           <ng-container *ngIf="user; else loggedOut">
-            <!-- User Avatar and Name -->
             <div class="flex items-center gap-3 cursor-pointer hover:bg-white/10 rounded-lg p-2 transition-colors"
                  (click)="toggleUserMenu()">
               <div class="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
@@ -71,7 +69,6 @@ import { AuthStateService } from './services/auth-state.service';
               </svg>
             </div>
 
-            <!-- User Dropdown Menu -->
             <div *ngIf="isUserMenuOpen" 
                  class="absolute top-full right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50">
               <div class="p-4 border-b border-gray-700">
@@ -104,14 +101,12 @@ import { AuthStateService } from './services/auth-state.service';
             </div>
           </ng-container>
 
-          <!-- Login Button (When Not Logged In) -->
           <ng-template #loggedOut>
             <a routerLink="/auth" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors font-medium">
               Iniciar sesión
             </a>
           </ng-template>
 
-          <!-- Mobile Menu Toggle -->
           <button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300 md:hidden"
                   (click)="toggleMobileMenu()">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +116,6 @@ import { AuthStateService } from './services/auth-state.service';
         </div>
       </div>
       
-      <!-- Mobile Navigation Menu -->
       <div *ngIf="isMobileMenuOpen" class="md:hidden bg-black/90 backdrop-blur-md border-t border-white/10">
         <nav class="px-6 py-4 space-y-3">
           <a routerLink="/" 
@@ -162,13 +156,24 @@ export class HeaderComponent implements OnInit, OnDestroy {
   isUserMenuOpen = false;
   isMobileMenuOpen = false;
   private unsub?: () => void;
+  private previousUrl: string = '/';
+  private currentUrl: string = '/';
 
   constructor(
     private authState: AuthStateService,
     private router: Router,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
-  ) {}
+  ) {
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      if (this.currentUrl !== '/favorites') {
+        this.previousUrl = this.currentUrl;
+      }
+      this.currentUrl = event.urlAfterRedirects;
+    });
+  }
 
   ngOnInit() {
     this.unsub = this.authState.subscribe((u) => {
@@ -192,8 +197,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
   closeMobileMenu() { this.isMobileMenuOpen = false; this.cdr.detectChanges(); }
   @HostListener('document:click', ['$event']) onDocumentClick(event: Event) { const target = event.target as HTMLElement; if (!target.closest('.relative')) { this.isUserMenuOpen = false; this.cdr.detectChanges(); } }
 
-  goHome() { this.router.navigate(['/']); this.closeMobileMenu(); }
-  goFavorites() { this.router.navigate(['/favorites']); }
+  goHome() { 
+    this.router.navigate(['/']); 
+    this.closeMobileMenu(); 
+  }
+  
+  handleFavoritesClick() {
+    if (this.currentUrl === '/favorites') {
+      this.router.navigate([this.previousUrl]);
+    } else {
+      this.router.navigate(['/favorites']);
+    }
+  }
 
   async logout() { this.isUserMenuOpen = false; this.cdr.detectChanges(); try { await this.authState.signOut(); await this.router.navigate(['/']); } catch (e) { console.error(e); } }
 }

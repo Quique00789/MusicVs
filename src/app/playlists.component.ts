@@ -230,6 +230,9 @@ interface QueueItem extends Song {
       min-height: 100vh;
       background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
       color: #e6eefc;
+      padding-top: 80px; /* Added padding to account for fixed header */
+
+
     }
 
     /* Hero Section */
@@ -868,9 +871,8 @@ interface QueueItem extends Song {
     }
 
     @media (max-width: 768px) {
-      .playlists-hero {
-        height: 30vh;
-        min-height: 250px;
+     .playlists-container {
+        padding-top: 70px; /* Adjusted for mobile header */
       }
 
       .hero-title {
@@ -901,8 +903,8 @@ interface QueueItem extends Song {
     }
 
     @media (max-width: 480px) {
-      .hero-title {
-        font-size: 2rem;
+      .playlists-container {
+        padding-top: 65px; /* Further adjusted for smaller screens */
       }
 
       .create-playlist-btn {

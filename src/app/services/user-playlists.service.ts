@@ -13,6 +13,7 @@ export interface UserPlaylist {
   created_at: string;
   updated_at: string;
   song_count?: number;
+  total_duration?: number;
 }
 
 export interface PlaylistSong {
@@ -27,6 +28,12 @@ export interface PlaylistSong {
   added_at: string;
 }
 
+export interface PublicPlaylistWithOwner extends UserPlaylist {
+  owner_username?: string;
+  owner_display_name?: string;
+  owner_avatar_url?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -35,6 +42,9 @@ export class UserPlaylistsService {
   
   private playlistsSubject = new BehaviorSubject<UserPlaylist[]>([]);
   public playlists$ = this.playlistsSubject.asObservable();
+  
+  private publicPlaylistsSubject = new BehaviorSubject<PublicPlaylistWithOwner[]>([]);
+  public publicPlaylists$ = this.publicPlaylistsSubject.asObservable();
 
   constructor() {
     this.loadUserPlaylists();
@@ -47,10 +57,7 @@ export class UserPlaylistsService {
 
       const { data, error } = await this.supabase.client
         .from('playlists')
-        .select(`
-          *,
-          song_count:playlist_songs(count)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -59,19 +66,88 @@ export class UserPlaylistsService {
         return;
       }
 
-      // Procesar el conteo de canciones
-      const playlistsWithCount = (data || []).map((playlist: any) => ({
-        ...playlist,
-        song_count: playlist.song_count?.[0]?.count || 0
-      }));
-
-      this.playlistsSubject.next(playlistsWithCount);
+      this.playlistsSubject.next(data || []);
     } catch (error) {
       console.error('Error in loadUserPlaylists:', error);
     }
   }
 
-  async createPlaylist(name: string, description?: string): Promise<{ success: boolean; playlist?: UserPlaylist; error?: string }> {
+  async searchPublicPlaylists(query: string): Promise<{ success: boolean; playlists?: PublicPlaylistWithOwner[]; error?: string }> {
+    try {
+      const searchTerm = `%${query.toLowerCase()}%`;
+      
+      const { data, error } = await this.supabase.client
+        .from('playlists')
+        .select(`
+          *,
+          profiles!inner (
+            username,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('is_public', true)
+        .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error searching public playlists:', error);
+        return { success: false, error: error.message };
+      }
+
+      const playlistsWithOwner = (data || []).map((item: any) => ({
+        ...item,
+        owner_username: item.profiles?.username,
+        owner_display_name: item.profiles?.display_name,
+        owner_avatar_url: item.profiles?.avatar_url
+      }));
+
+      this.publicPlaylistsSubject.next(playlistsWithOwner);
+      return { success: true, playlists: playlistsWithOwner };
+    } catch (error) {
+      console.error('Error in searchPublicPlaylists:', error);
+      return { success: false, error: 'Error interno del servidor' };
+    }
+  }
+
+  async getPublicPlaylists(limit: number = 20): Promise<{ success: boolean; playlists?: PublicPlaylistWithOwner[]; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('playlists')
+        .select(`
+          *,
+          profiles!inner (
+            username,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error getting public playlists:', error);
+        return { success: false, error: error.message };
+      }
+
+      const playlistsWithOwner = (data || []).map((item: any) => ({
+        ...item,
+        owner_username: item.profiles?.username,
+        owner_display_name: item.profiles?.display_name,
+        owner_avatar_url: item.profiles?.avatar_url
+      }));
+
+      this.publicPlaylistsSubject.next(playlistsWithOwner);
+      return { success: true, playlists: playlistsWithOwner };
+    } catch (error) {
+      console.error('Error in getPublicPlaylists:', error);
+      return { success: false, error: 'Error interno del servidor' };
+    }
+  }
+
+  async createPlaylist(name: string, description?: string, isPublic: boolean = false): Promise<{ success: boolean; playlist?: UserPlaylist; error?: string }> {
     try {
       const { data: { user } } = await this.supabase.client.auth.getUser();
       if (!user) {
@@ -84,7 +160,7 @@ export class UserPlaylistsService {
           user_id: user.id,
           name: name.trim(),
           description: description?.trim() || null,
-          is_public: false
+          is_public: isPublic
         })
         .select()
         .single();
@@ -94,9 +170,8 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
-      const newPlaylist = { ...data, song_count: 0 } as UserPlaylist;
+      const newPlaylist = { ...data, song_count: 0, total_duration: 0 } as UserPlaylist;
       
-      // Actualizar el estado local
       const currentPlaylists = this.playlistsSubject.value;
       this.playlistsSubject.next([newPlaylist, ...currentPlaylists]);
 
@@ -107,7 +182,7 @@ export class UserPlaylistsService {
     }
   }
 
-  async updatePlaylist(playlistId: string, updates: { name?: string; description?: string; is_public?: boolean }): Promise<{ success: boolean; error?: string }> {
+  async updatePlaylist(playlistId: string, updates: { name?: string; description?: string; is_public?: boolean; cover_image_url?: string }): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await this.supabase.client.auth.getUser();
       if (!user) {
@@ -128,7 +203,6 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
-      // Actualizar el estado local
       const currentPlaylists = this.playlistsSubject.value;
       const updatedPlaylists = currentPlaylists.map(playlist => 
         playlist.id === playlistId 
@@ -162,7 +236,6 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
-      // Actualizar el estado local
       const currentPlaylists = this.playlistsSubject.value;
       this.playlistsSubject.next(currentPlaylists.filter(playlist => playlist.id !== playlistId));
 
@@ -201,7 +274,6 @@ export class UserPlaylistsService {
     cover?: string;
   }): Promise<{ success: boolean; error?: string }> {
     try {
-      // Verificar que la playlist pertenece al usuario
       const { data: { user } } = await this.supabase.client.auth.getUser();
       if (!user) {
         return { success: false, error: 'Usuario no autenticado' };
@@ -209,7 +281,7 @@ export class UserPlaylistsService {
 
       const { data: playlist } = await this.supabase.client
         .from('playlists')
-        .select('id')
+        .select('id, user_id')
         .eq('id', playlistId)
         .eq('user_id', user.id)
         .single();
@@ -218,10 +290,20 @@ export class UserPlaylistsService {
         return { success: false, error: 'Playlist no encontrada' };
       }
 
-      // Obtener la siguiente posición
+      const { data: existingSong } = await this.supabase.client
+        .from('playlist_songs')
+        .select('id')
+        .eq('playlist_id', playlistId)
+        .eq('song_id', song.id)
+        .single();
+
+      if (existingSong) {
+        return { success: false, error: 'La canción ya está en esta playlist' };
+      }
+
       const { count } = await this.supabase.client
         .from('playlist_songs')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('playlist_id', playlistId);
 
       const { error } = await this.supabase.client
@@ -241,11 +323,10 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
-      // Actualizar el conteo de canciones en el estado local
       const currentPlaylists = this.playlistsSubject.value;
       const updatedPlaylists = currentPlaylists.map(p => 
         p.id === playlistId 
-          ? { ...p, song_count: (p.song_count || 0) + 1 }
+          ? { ...p, song_count: (p.song_count || 0) + 1, total_duration: (p.total_duration || 0) + (song.duration || 0) }
           : p
       );
       this.playlistsSubject.next(updatedPlaylists);
@@ -270,14 +351,7 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
-      // Actualizar el conteo de canciones en el estado local
-      const currentPlaylists = this.playlistsSubject.value;
-      const updatedPlaylists = currentPlaylists.map(p => 
-        p.id === playlistId 
-          ? { ...p, song_count: Math.max((p.song_count || 1) - 1, 0) }
-          : p
-      );
-      this.playlistsSubject.next(updatedPlaylists);
+      await this.loadUserPlaylists();
 
       return { success: true };
     } catch (error) {
@@ -286,7 +360,99 @@ export class UserPlaylistsService {
     }
   }
 
+  async reorderSong(playlistId: string, songId: string, newPosition: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: { user } } = await this.supabase.client.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Usuario no autenticado' };
+      }
+
+      const { data: playlist } = await this.supabase.client
+        .from('playlists')
+        .select('id, user_id')
+        .eq('id', playlistId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!playlist) {
+        return { success: false, error: 'Playlist no encontrada' };
+      }
+
+      const { data: songs, error: fetchError } = await this.supabase.client
+        .from('playlist_songs')
+        .select('*')
+        .eq('playlist_id', playlistId)
+        .order('position', { ascending: true });
+
+      if (fetchError) {
+        return { success: false, error: fetchError.message };
+      }
+
+      if (!songs) {
+        return { success: false, error: 'No se encontraron canciones' };
+      }
+
+      const songIndex = songs.findIndex(s => s.song_id === songId);
+      if (songIndex === -1) {
+        return { success: false, error: 'Canción no encontrada en la playlist' };
+      }
+
+      const [movedSong] = songs.splice(songIndex, 1);
+      songs.splice(newPosition - 1, 0, movedSong);
+
+      const updates = songs.map((song, index) => ({
+        id: song.id,
+        position: index + 1
+      }));
+
+      for (const update of updates) {
+        await this.supabase.client
+          .from('playlist_songs')
+          .update({ position: update.position })
+          .eq('id', update.id);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in reorderSong:', error);
+      return { success: false, error: 'Error interno del servidor' };
+    }
+  }
+
+  async moveSongPosition(playlistId: string, fromPosition: number, toPosition: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: songs, error: fetchError } = await this.supabase.client
+        .from('playlist_songs')
+        .select('*')
+        .eq('playlist_id', playlistId)
+        .order('position', { ascending: true });
+
+      if (fetchError || !songs) {
+        return { success: false, error: 'Error al cargar canciones' };
+      }
+
+      const [movedSong] = songs.splice(fromPosition - 1, 1);
+      songs.splice(toPosition - 1, 0, movedSong);
+
+      for (let i = 0; i < songs.length; i++) {
+        await this.supabase.client
+          .from('playlist_songs')
+          .update({ position: i + 1 })
+          .eq('id', songs[i].id);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in moveSongPosition:', error);
+      return { success: false, error: 'Error interno del servidor' };
+    }
+  }
+
   getPlaylists(): Observable<UserPlaylist[]> {
     return this.playlists$;
+  }
+
+  getPublicPlaylistsObservable(): Observable<PublicPlaylistWithOwner[]> {
+    return this.publicPlaylists$;
   }
 }

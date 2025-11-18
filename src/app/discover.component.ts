@@ -1,6 +1,9 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { songs } from './data/songs';
+import { Song } from './models/song';
 
 interface DiscoverItem {
   id: string;
@@ -15,7 +18,7 @@ interface DiscoverItem {
 @Component({
   selector: 'app-discover',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="discover-container">
@@ -31,7 +34,18 @@ interface DiscoverItem {
               <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <input type="text" placeholder="Buscar canciones, artistas, álbumes..." class="search-input">
+              <input 
+                type="text" 
+                placeholder="Buscar canciones, artistas, álbumes..." 
+                class="search-input"
+                [(ngModel)]="searchQuery"
+                (input)="onSearchChange()"
+              >
+              <button *ngIf="searchQuery" class="clear-btn" (click)="clearSearch()">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -47,8 +61,61 @@ interface DiscoverItem {
       <!-- Main Content -->
       <div class="discover-content">
         
+        <!-- Search Results Section -->
+        <section class="content-section fade-in-up" *ngIf="searchQuery && filteredSongs.length > 0">
+          <div class="section-header">
+            <h2 class="section-title">Resultados de Búsqueda</h2>
+            <span class="results-count glass-morphism">{{ filteredSongs.length }} resultado{{ filteredSongs.length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="search-results-grid">
+            <div 
+              *ngFor="let song of filteredSongs; trackBy: trackBySongFn; let i = index" 
+              class="search-result-item glass-morphism fade-in-up"
+              [style.animation-delay.s]="i * 0.1"
+            >
+              <div class="result-image">
+                <img [src]="song.cover" [alt]="song.title" loading="lazy">
+                <div class="play-overlay">
+                  <button class="play-btn neomorphism">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="result-info">
+                <h3 class="result-title">{{ song.title }}</h3>
+                <p class="result-artist">{{ song.artist }}</p>
+                <div class="result-meta">
+                  <span class="result-duration">{{ song.duration }}</span>
+                  <span class="result-album" *ngIf="song.album">{{ song.album }}</span>
+                </div>
+              </div>
+              <button class="add-btn neomorphism" title="Agregar a playlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- No Results Message -->
+        <section class="content-section fade-in-up" *ngIf="searchQuery && filteredSongs.length === 0">
+          <div class="no-results glass-morphism">
+            <svg class="no-results-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 class="no-results-title">No se encontraron resultados</h3>
+            <p class="no-results-text">No encontramos canciones que coincidan con "{{ searchQuery }}"</p>
+            <button class="clear-search-btn neomorphism" (click)="clearSearch()">
+              <span>Limpiar búsqueda</span>
+            </button>
+          </div>
+        </section>
+        
         <!-- Trending Now Section -->
-        <section class="content-section fade-in-up">
+        <section class="content-section fade-in-up" *ngIf="!searchQuery">
           <div class="section-header">
             <h2 class="section-title">Tendencias Ahora</h2>
             <button class="see-all-btn glass-morphism">Ver todo</button>
@@ -85,7 +152,7 @@ interface DiscoverItem {
         </section>
 
         <!-- Genres Section -->
-        <section class="content-section fade-in-up">
+        <section class="content-section fade-in-up" *ngIf="!searchQuery">
           <div class="section-header">
             <h2 class="section-title">Géneros Populares</h2>
           </div>
@@ -106,7 +173,7 @@ interface DiscoverItem {
         </section>
 
         <!-- Recommended Playlists -->
-        <section class="content-section fade-in-up">
+        <section class="content-section fade-in-up" *ngIf="!searchQuery">
           <div class="section-header">
             <h2 class="section-title">Playlists Recomendadas</h2>
             <button class="see-all-btn glass-morphism">Ver todo</button>
@@ -136,7 +203,7 @@ interface DiscoverItem {
         </section>
 
         <!-- Featured Artists -->
-        <section class="content-section fade-in-up">
+        <section class="content-section fade-in-up" *ngIf="!searchQuery">
           <div class="section-header">
             <h2 class="section-title">Artistas Destacados</h2>
             <button class="see-all-btn glass-morphism">Ver todo</button>
@@ -167,7 +234,7 @@ interface DiscoverItem {
         </section>
 
         <!-- New Releases -->
-        <section class="content-section fade-in-up">
+        <section class="content-section fade-in-up" *ngIf="!searchQuery">
           <div class="section-header">
             <h2 class="section-title">Nuevos Lanzamientos</h2>
             <button class="see-all-btn glass-morphism">Ver todo</button>
@@ -269,6 +336,7 @@ interface DiscoverItem {
       height: 20px;
       color: rgba(230, 238, 252, 0.6);
       margin-right: 1rem;
+      flex-shrink: 0;
     }
 
     .search-input {
@@ -282,6 +350,31 @@ interface DiscoverItem {
 
     .search-input::placeholder {
       color: rgba(230, 238, 252, 0.5);
+    }
+
+    .clear-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: none;
+      color: rgba(230, 238, 252, 0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+      margin-left: 0.5rem;
+    }
+
+    .clear-btn:hover {
+      color: #06b6d4;
+      transform: scale(1.1);
+    }
+
+    .clear-btn svg {
+      width: 16px;
+      height: 16px;
     }
 
     /* Floating Elements */
@@ -362,6 +455,13 @@ interface DiscoverItem {
       -webkit-text-fill-color: transparent;
     }
 
+    .results-count {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: rgba(230, 238, 252, 0.8);
+    }
+
     .see-all-btn {
       padding: 0.75rem 1.5rem;
       border-radius: 25px;
@@ -392,6 +492,138 @@ interface DiscoverItem {
         5px 5px 10px rgba(0, 0, 0, 0.5),
         -5px -5px 10px rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Search Results Section */
+    .search-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      padding: 1.5rem;
+      border-radius: 20px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      gap: 1.5rem;
+    }
+
+    .search-result-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(6, 182, 212, 0.2);
+    }
+
+    .result-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 15px;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .result-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #e6eefc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-artist {
+      color: rgba(230, 238, 252, 0.7);
+      margin-bottom: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.875rem;
+      color: rgba(230, 238, 252, 0.6);
+    }
+
+    .add-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      color: #06b6d4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .add-btn:hover {
+      transform: scale(1.1);
+      color: #0891b2;
+    }
+
+    .add-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* No Results Section */
+    .no-results {
+      text-align: center;
+      padding: 4rem 2rem;
+      border-radius: 20px;
+    }
+
+    .no-results-icon {
+      width: 80px;
+      height: 80px;
+      color: rgba(230, 238, 252, 0.3);
+      margin: 0 auto 1.5rem;
+    }
+
+    .no-results-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #e6eefc;
+    }
+
+    .no-results-text {
+      color: rgba(230, 238, 252, 0.7);
+      margin-bottom: 2rem;
+    }
+
+    .clear-search-btn {
+      padding: 0.75rem 2rem;
+      border-radius: 25px;
+      border: none;
+      color: #e6eefc;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .clear-search-btn:hover {
+      transform: scale(1.05);
+      background: linear-gradient(145deg, #06b6d4, #0891b2);
     }
 
     /* Trending Section */
@@ -455,7 +687,8 @@ interface DiscoverItem {
 
     .trending-item:hover .play-overlay,
     .playlist-card:hover .playlist-overlay,
-    .release-card:hover .release-overlay {
+    .release-card:hover .release-overlay,
+    .result-image:hover .play-overlay {
       opacity: 1;
     }
 
@@ -771,6 +1004,23 @@ interface DiscoverItem {
       text-overflow: ellipsis;
     }
 
+    /* Animations */
+    .fade-in-up {
+      animation: fadeInUp 0.6s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     /* Responsive Design */
     @media (max-width: 768px) {
       .discover-content {
@@ -795,15 +1045,18 @@ interface DiscoverItem {
         align-items: flex-start;
       }
 
-      .trending-grid {
+      .trending-grid,
+      .search-results-grid {
         grid-template-columns: 1fr;
       }
 
-      .trending-item {
+      .trending-item,
+      .search-result-item {
         padding: 1rem;
       }
 
-      .trending-image {
+      .trending-image,
+      .result-image {
         width: 60px;
         height: 60px;
         margin-right: 1rem;
@@ -847,6 +1100,10 @@ interface DiscoverItem {
   `]
 })
 export class DiscoverComponent implements OnInit {
+  
+  searchQuery: string = '';
+  allSongs: Song[] = songs;
+  filteredSongs: Song[] = [];
   
   trendingSongs: DiscoverItem[] = [
     {
@@ -1046,13 +1303,43 @@ export class DiscoverComponent implements OnInit {
     }
   ];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     // Cargar datos o inicializar componente
   }
 
+  onSearchChange() {
+    const query = this.searchQuery.toLowerCase().trim();
+    
+    if (query) {
+      // Filtrar canciones por nombre (case insensitive)
+      this.filteredSongs = this.allSongs.filter(song => 
+        song.title.toLowerCase().includes(query) ||
+        song.artist.toLowerCase().includes(query) ||
+        (song.album && song.album.toLowerCase().includes(query))
+      );
+    } else {
+      this.filteredSongs = [];
+    }
+    
+    this.cdr.markForCheck();
+  }
+
+  clearSearch() {
+    this.searchQuery = '';
+    this.filteredSongs = [];
+    this.cdr.markForCheck();
+  }
+
   trackByFn(index: number, item: DiscoverItem): string {
+    return item.id;
+  }
+
+  trackBySongFn(index: number, item: Song): string {
     return item.id;
   }
 }

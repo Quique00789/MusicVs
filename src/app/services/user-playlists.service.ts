@@ -279,33 +279,37 @@ export class UserPlaylistsService {
         return { success: false, error: 'Usuario no autenticado' };
       }
 
+      // Verificar que la playlist pertenece al usuario
       const { data: playlist } = await this.supabase.client
         .from('playlists')
         .select('id, user_id')
         .eq('id', playlistId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!playlist) {
         return { success: false, error: 'Playlist no encontrada' };
       }
 
+      // Verificar si la canción ya existe en la playlist (usar maybeSingle)
       const { data: existingSong } = await this.supabase.client
         .from('playlist_songs')
         .select('id')
         .eq('playlist_id', playlistId)
         .eq('song_id', song.id)
-        .single();
+        .maybeSingle();
 
       if (existingSong) {
         return { success: false, error: 'La canción ya está en esta playlist' };
       }
 
+      // Obtener la posición para la nueva canción
       const { count } = await this.supabase.client
         .from('playlist_songs')
         .select('*', { count: 'exact', head: true })
         .eq('playlist_id', playlistId);
 
+      // Insertar la canción en la playlist
       const { error } = await this.supabase.client
         .from('playlist_songs')
         .insert({
@@ -323,6 +327,7 @@ export class UserPlaylistsService {
         return { success: false, error: error.message };
       }
 
+      // Actualizar el contador de canciones en la playlist local
       const currentPlaylists = this.playlistsSubject.value;
       const updatedPlaylists = currentPlaylists.map(p => 
         p.id === playlistId 
@@ -372,7 +377,7 @@ export class UserPlaylistsService {
         .select('id, user_id')
         .eq('id', playlistId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!playlist) {
         return { success: false, error: 'Playlist no encontrada' };

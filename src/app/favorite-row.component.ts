@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FavoriteButtonComponent } from './favorite-button.component';
 import { AudioPlayerService } from './services/audio-player.service';
@@ -22,7 +22,7 @@ import { AudioPlayerService } from './services/audio-player.service';
         <app-favorite-button
           [song]="{ id, title, artist, duration, cover }"
           size="small"
-          (favoriteChanged)="$event && $event.isFavorite === false && removed()"
+          (favoriteChanged)="onFavoriteChanged($event)"
         />
       </div>
     </div>
@@ -46,6 +46,7 @@ export class FavoriteRowComponent {
   @Input() cover?: string;
   @Input() duration?: number;
   @Input() onRemove?: (id: string) => void;
+  @Output() favoriteChanged = new EventEmitter<{ isFavorite: boolean, success: boolean }>();
 
   private player = inject(AudioPlayerService);
 
@@ -54,8 +55,10 @@ export class FavoriteRowComponent {
     this.player.playTrack(track, [track], 0);
   }
 
-  removed(){
-    this.onRemove?.(this.id);
+  onFavoriteChanged(event: { isFavorite: boolean, success: boolean }) {
+    this.favoriteChanged.emit(event);
+    if (!event.success) return;
+    if (event.isFavorite === false) this.onRemove?.(this.id);
   }
 
   format(sec: number){

@@ -33,6 +33,21 @@ import { AuthStateService } from './services/auth-state.service';
         </svg>
       </div>
     </button>
+
+    <!-- Toast Notifications -->
+    <div class="toast success" *ngIf="showSuccessToast">
+      <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 13l4 4L19 7"/>
+      </svg>
+      <span>{{ toastMessage }}</span>
+    </div>
+
+    <div class="toast error" *ngIf="showErrorToast">
+      <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+      <span>{{ toastMessage }}</span>
+    </div>
   `,
   styles: [`
     .favorite-button { background: none; border: none; color: #71717a; cursor: pointer; padding: 0.5rem; border-radius: 0.375rem; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; position: relative; width: 40px; height: 40px; }
@@ -47,6 +62,42 @@ import { AuthStateService } from './services/auth-state.service';
     .favorite-button.small svg { width: 16px; height: 16px; }
     .favorite-button.large { width: 48px; height: 48px; padding: 0.75rem; }
     .favorite-button.large svg { width: 24px; height: 24px; }
+
+    /* Toast Notifications (igual que playlist-detail) */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      color: white;
+      font-weight: 500;
+      z-index: 2000;
+      animation: slideInRight 0.3s ease;
+    }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast.success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+    }
+
+    .toast.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+    }
+
+    .toast-icon {
+      width: 20px;
+      height: 20px;
+    }
   `]
 })
 export class FavoriteButtonComponent implements OnInit, OnDestroy {
@@ -63,6 +114,11 @@ export class FavoriteButtonComponent implements OnInit, OnDestroy {
   isFavorite = false;
   isLoading = false;
   isAuthenticated = false;
+
+  // Toast
+  showSuccessToast = false;
+  showErrorToast = false;
+  toastMessage = '';
 
   ngOnInit() {
     if (!this.song?.id) return;
@@ -100,18 +156,44 @@ export class FavoriteButtonComponent implements OnInit, OnDestroy {
         if (result.success) {
           this.isFavorite = result.isFavorite;
           this.favoriteChanged.emit({ isFavorite: result.isFavorite, success: true });
+          // Mostrar toast
+          this.showToast(
+            result.isFavorite ? 'Agregado a favoritos' : 'Eliminado de favoritos',
+            'success'
+          );
         } else {
           this.favoriteChanged.emit({ isFavorite: this.isFavorite, success: false });
+          this.showToast('Error al actualizar favoritos', 'error');
         }
         this.cdr.markForCheck();
       });
     } catch (error) {
       this.zone.run(() => {
         this.favoriteChanged.emit({ isFavorite: this.isFavorite, success: false });
+        this.showToast('Error al actualizar favoritos', 'error');
         this.cdr.markForCheck();
       });
     } finally {
       this.zone.run(() => { this.isLoading = false; this.cdr.markForCheck(); });
     }
+  }
+
+  // Toast (igual que playlist-detail)
+  showToast(message: string, type: 'success' | 'error') {
+    this.toastMessage = message;
+    if (type === 'success') {
+      this.showSuccessToast = true;
+      setTimeout(() => {
+        this.showSuccessToast = false;
+        this.cdr.markForCheck();
+      }, 3000);
+    } else {
+      this.showErrorToast = true;
+      setTimeout(() => {
+        this.showErrorToast = false;
+        this.cdr.markForCheck();
+      }, 3000);
+    }
+    this.cdr.markForCheck();
   }
 }

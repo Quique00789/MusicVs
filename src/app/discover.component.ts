@@ -1,9 +1,12 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { songs } from './data/songs';
 import { Song } from './models/song';
+import { UserPlaylistsService, UserPlaylist } from './services/user-playlists.service';
+import { AuthStateService } from './services/auth-state.service';
 
 interface DiscoverItem {
   id: string;
@@ -91,7 +94,7 @@ interface DiscoverItem {
                   <span class="result-album" *ngIf="song.album">{{ song.album }}</span>
                 </div>
               </div>
-              <button class="add-btn neomorphism" title="Agregar a playlist">
+              <button class="add-btn neomorphism" (click)="openPlaylistSelector(song)" title="Agregar a playlist">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 5v14M5 12h14"/>
                 </svg>
@@ -266,6 +269,84 @@ interface DiscoverItem {
           </div>
         </section>
       </div>
+    </div>
+
+    <!-- Playlist Selector Modal -->
+    <div class="modal-overlay" *ngIf="showPlaylistModal" (click)="closePlaylistSelector()">
+      <div class="modal-content glass-morphism" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="modal-title">Agregar a Playlist</h2>
+          <button class="close-btn" (click)="closePlaylistSelector()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="selected-song-info" *ngIf="selectedSong">
+            <img [src]="selectedSong.cover" [alt]="selectedSong.title" class="song-thumbnail">
+            <div class="song-details">
+              <h4 class="song-name">{{ selectedSong.title }}</h4>
+              <p class="song-artist-name">{{ selectedSong.artist }}</p>
+            </div>
+          </div>
+
+          <div class="playlists-list" *ngIf="!isLoadingPlaylists && userPlaylists.length > 0">
+            <div 
+              *ngFor="let playlist of userPlaylists; trackBy: trackByPlaylistFn"
+              class="playlist-option glass-morphism"
+              (click)="addToPlaylist(playlist)"
+              [class.adding]="addingToPlaylistId === playlist.id"
+            >
+              <img [src]="playlist.cover_image_url || defaultPlaylistCover" [alt]="playlist.name" class="playlist-thumb">
+              <div class="playlist-details">
+                <h4 class="playlist-option-name">{{ playlist.name }}</h4>
+                <p class="playlist-song-count">{{ playlist.song_count || 0 }} canciones</p>
+              </div>
+              <div class="add-indicator" *ngIf="addingToPlaylistId === playlist.id">
+                <div class="spinner-small"></div>
+              </div>
+              <div class="add-icon" *ngIf="addingToPlaylistId !== playlist.id">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-playlists" *ngIf="!isLoadingPlaylists && userPlaylists.length === 0">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19V6l12-2v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM22 17c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"></path>
+            </svg>
+            <p class="empty-text">No tienes playlists aún</p>
+            <button class="create-new-btn neomorphism" (click)="navigateToPlaylists()">
+              Crear Playlist
+            </button>
+          </div>
+
+          <div class="loading-playlists" *ngIf="isLoadingPlaylists">
+            <div class="spinner"></div>
+            <p>Cargando playlists...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" *ngIf="showSuccessToast">
+      <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+      <span>{{ toastMessage }}</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast error" *ngIf="showErrorToast">
+      <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+      <span>{{ toastMessage }}</span>
     </div>
   `,
   styles: [`
@@ -1004,6 +1085,237 @@ interface DiscoverItem {
       text-overflow: ellipsis;
     }
 
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      width: 90%;
+      max-width: 500px;
+      border-radius: 20px;
+      animation: slideUp 0.3s ease;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-title { font-size: 1.5rem; font-weight: 700; color: #e6eefc; }
+    .w-6 { width: 1.5rem; height: 1.5rem; }
+
+    .close-btn {
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(230, 238, 252, 0.7);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .close-btn:hover { background: rgba(255, 255, 255, 0.15); color: #e6eefc; }
+    
+    .modal-body { 
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .selected-song-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .song-thumbnail {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .song-details { flex: 1; }
+    .song-name { font-weight: 600; color: #e6eefc; margin-bottom: 0.25rem; }
+    .song-artist-name { color: rgba(230, 238, 252, 0.7); font-size: 0.9rem; }
+
+    .playlists-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .playlist-option {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .playlist-option:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateX(5px);
+    }
+
+    .playlist-option.adding {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .playlist-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .playlist-details { flex: 1; }
+    .playlist-option-name { font-weight: 600; color: #e6eefc; margin-bottom: 0.25rem; }
+    .playlist-song-count { color: rgba(230, 238, 252, 0.6); font-size: 0.85rem; }
+
+    .add-icon {
+      width: 24px;
+      height: 24px;
+      color: #06b6d4;
+      transition: all 0.3s ease;
+    }
+
+    .playlist-option:hover .add-icon {
+      transform: scale(1.2);
+    }
+
+    .add-indicator {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(6, 182, 212, 0.2);
+      border-top: 2px solid #06b6d4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-playlists {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+
+    .w-12 { width: 3rem; height: 3rem; }
+    .empty-text { color: rgba(230, 238, 252, 0.7); margin: 1rem 0; }
+
+    .create-new-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 20px;
+      border: none;
+      color: #e6eefc;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .create-new-btn:hover {
+      transform: scale(1.05);
+      background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+    }
+
+    .loading-playlists {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      color: rgba(230, 238, 252, 0.7);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(6, 182, 212, 0.2);
+      border-top: 3px solid #06b6d4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      color: white;
+      font-weight: 500;
+      z-index: 2000;
+      animation: slideInRight 0.3s ease;
+    }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast.success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+    }
+
+    .toast.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+    }
+
+    .toast-icon {
+      width: 20px;
+      height: 20px;
+    }
+
     /* Animations */
     .fade-in-up {
       animation: fadeInUp 0.6s ease forwards;
@@ -1069,6 +1381,12 @@ interface DiscoverItem {
       .genre-card {
         height: 100px;
       }
+
+      .toast {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+      }
     }
 
     @media (max-width: 480px) {
@@ -1099,11 +1417,25 @@ interface DiscoverItem {
     }
   `]
 })
-export class DiscoverComponent implements OnInit {
+export class DiscoverComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
   
   searchQuery: string = '';
   allSongs: Song[] = songs;
   filteredSongs: Song[] = [];
+
+  // Playlist modal
+  showPlaylistModal = false;
+  selectedSong: Song | null = null;
+  userPlaylists: UserPlaylist[] = [];
+  isLoadingPlaylists = false;
+  addingToPlaylistId: string | null = null;
+  defaultPlaylistCover = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop';
+
+  // Toast notifications
+  showSuccessToast = false;
+  showErrorToast = false;
+  toastMessage = '';
   
   trendingSongs: DiscoverItem[] = [
     {
@@ -1305,11 +1637,24 @@ export class DiscoverComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private playlistsService: UserPlaylistsService,
+    private authStateService: AuthStateService
   ) {}
 
   ngOnInit() {
-    // Cargar datos o inicializar componente
+    // Suscribirse a las playlists del usuario
+    this.playlistsService.playlists$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(playlists => {
+      this.userPlaylists = playlists;
+      this.cdr.markForCheck();
+    });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   onSearchChange() {
@@ -1335,11 +1680,102 @@ export class DiscoverComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  async openPlaylistSelector(song: Song) {
+    // Verificar autenticación
+    const user = await this.authStateService.getCurrentUser();
+    if (!user) {
+      this.showToast('Debes iniciar sesión para agregar canciones a playlists', 'error');
+      setTimeout(() => {
+        this.router.navigate(['/auth']);
+      }, 2000);
+      return;
+    }
+
+    this.selectedSong = song;
+    this.showPlaylistModal = true;
+    this.isLoadingPlaylists = true;
+    this.cdr.markForCheck();
+
+    // Cargar playlists del usuario
+    await this.playlistsService.loadUserPlaylists();
+    this.isLoadingPlaylists = false;
+    this.cdr.markForCheck();
+  }
+
+  closePlaylistSelector() {
+    this.showPlaylistModal = false;
+    this.selectedSong = null;
+    this.addingToPlaylistId = null;
+    this.cdr.markForCheck();
+  }
+
+  async addToPlaylist(playlist: UserPlaylist) {
+    if (!this.selectedSong || this.addingToPlaylistId) return;
+
+    this.addingToPlaylistId = playlist.id;
+    this.cdr.markForCheck();
+
+    // Parsear duración de formato "MM:SS" a segundos
+    let durationInSeconds: number | undefined;
+    if (this.selectedSong.duration) {
+      const parts = this.selectedSong.duration.split(':');
+      if (parts.length === 2) {
+        durationInSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      }
+    }
+
+    const result = await this.playlistsService.addSongToPlaylist(playlist.id, {
+      id: this.selectedSong.id,
+      title: this.selectedSong.title,
+      artist: this.selectedSong.artist,
+      duration: durationInSeconds,
+      cover: this.selectedSong.cover
+    });
+
+    this.addingToPlaylistId = null;
+
+    if (result.success) {
+      this.showToast(`"${this.selectedSong.title}" agregada a "${playlist.name}"`, 'success');
+      this.closePlaylistSelector();
+    } else {
+      this.showToast(result.error || 'Error al agregar canción', 'error');
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  navigateToPlaylists() {
+    this.closePlaylistSelector();
+    this.router.navigate(['/playlists']);
+  }
+
+  showToast(message: string, type: 'success' | 'error') {
+    this.toastMessage = message;
+    if (type === 'success') {
+      this.showSuccessToast = true;
+      setTimeout(() => {
+        this.showSuccessToast = false;
+        this.cdr.markForCheck();
+      }, 3000);
+    } else {
+      this.showErrorToast = true;
+      setTimeout(() => {
+        this.showErrorToast = false;
+        this.cdr.markForCheck();
+      }, 3000);
+    }
+    this.cdr.markForCheck();
+  }
+
   trackByFn(index: number, item: DiscoverItem): string {
     return item.id;
   }
 
   trackBySongFn(index: number, item: Song): string {
+    return item.id;
+  }
+
+  trackByPlaylistFn(index: number, item: UserPlaylist): string {
     return item.id;
   }
 }

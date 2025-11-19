@@ -37,8 +37,18 @@ import { FavoriteRowComponent } from './favorite-row.component';
           [artist]="it.song_artist"
           [cover]="it.song_cover_url"
           [duration]="it.song_duration || 0"
-          [onRemove]="onRemove"
+          [onRemove]="onRemoveWithToast"
         />
+      </div>
+
+      <!-- Toast Notificaciones -->
+      <div class="toast success" *ngIf="showSuccessToast">
+        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+        <span>{{ toastMessage }}</span>
+      </div>
+      <div class="toast error" *ngIf="showErrorToast">
+        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+        <span>{{ toastMessage }}</span>
       </div>
     </section>
   `,
@@ -53,6 +63,11 @@ import { FavoriteRowComponent } from './favorite-row.component';
     .empty{text-align:center;color:#a1a1aa;padding:3rem 1rem}
     .btn{display:inline-block;margin-top:1rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:.6rem 1rem;border-radius:.5rem;text-decoration:none}
     .list{display:flex;flex-direction:column;gap:.5rem}
+    .toast {position: fixed; bottom: 2rem; right: 2rem; display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500; z-index: 2000; animation: slideInRight 0.3s ease;} 
+    @keyframes slideInRight {from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; }}
+    .toast.success { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3); }
+    .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3); }
+    .toast-icon { width: 20px; height: 20px; }
   `]
 })
 export class FavoritesPageComponent implements OnInit, OnDestroy {
@@ -63,14 +78,29 @@ export class FavoritesPageComponent implements OnInit, OnDestroy {
   favorites: FavoriteSong[] = [];
   loading = true;
 
-  onRemove = (id: string) => {
-    // Optimistic UI: quita la fila inmediatamente
+  showSuccessToast = false;
+  showErrorToast = false;
+  toastMessage = '';
+
+  showToast(message: string, type: 'success' | 'error') {
+    this.toastMessage = message;
+    if (type === 'success') {
+      this.showSuccessToast = true;
+      setTimeout(() => this.showSuccessToast = false, 3000);
+    } else {
+      this.showErrorToast = true;
+      setTimeout(() => this.showErrorToast = false, 3000);
+    }
+  }
+
+  onRemoveWithToast = (id: string) => {
     this.favorites = this.favorites.filter(f => f.song_id !== id);
+    this.showToast('Eliminado de favoritos', 'success');
   };
 
   ngOnInit(): void {
     this.auth.user$.pipe(takeUntil(this.destroy$)).subscribe(u => {
-      if (!u) return; // la ruta de auth/guard puede redirigir
+      if (!u) return;
       this.favoritesSvc.getFavorites().pipe(takeUntil(this.destroy$)).subscribe(list => {
         this.favorites = list;
         this.loading = false;

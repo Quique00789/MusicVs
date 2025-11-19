@@ -38,6 +38,7 @@ import { FavoriteRowComponent } from './favorite-row.component';
           [cover]="it.song_cover_url"
           [duration]="it.song_duration || 0"
           [onRemove]="onRemoveWithToast"
+          (favoriteChanged)="onFavoriteChanged($event)"
         />
       </div>
 
@@ -52,8 +53,8 @@ import { FavoriteRowComponent } from './favorite-row.component';
       </div>
     </section>
   `,
-  styles: [`
-    .wrap{max-width:1100px;margin:0 auto;padding:1.5rem}
+  styles: [
+    `.wrap{max-width:1100px;margin:0 auto;padding:1.5rem}
     .head{display:flex;align-items:end;justify-content:space-between;margin:1rem 0}
     .head h1{color:#fff;margin:0}
     .head p{color:#a1a1aa;margin:0}
@@ -67,8 +68,8 @@ import { FavoriteRowComponent } from './favorite-row.component';
     @keyframes slideInRight {from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; }}
     .toast.success { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3); }
     .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3); }
-    .toast-icon { width: 20px; height: 20px; }
-  `]
+    .toast-icon { width: 20px; height: 20px; }`
+  ]
 })
 export class FavoritesPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -97,6 +98,14 @@ export class FavoritesPageComponent implements OnInit, OnDestroy {
     this.favorites = this.favorites.filter(f => f.song_id !== id);
     this.showToast('Eliminado de favoritos', 'success');
   };
+  
+  onFavoriteChanged(event: { isFavorite: boolean, success: boolean }) {
+    if (!event.success) {
+      this.showToast('Error al actualizar favoritos', 'error');
+      return;
+    }
+    this.showToast(event.isFavorite ? 'Agregado a favoritos' : 'Eliminado de favoritos', 'success');
+  }
 
   ngOnInit(): void {
     this.auth.user$.pipe(takeUntil(this.destroy$)).subscribe(u => {

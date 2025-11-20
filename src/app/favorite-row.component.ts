@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FavoriteButtonComponent } from './favorite-button.component';
-import { AudioPlayerService } from './services/audio-player.service';
+import { ToastService } from './toast.service';
 
 @Component({
   selector: 'app-favorite-row',
@@ -9,7 +9,7 @@ import { AudioPlayerService } from './services/audio-player.service';
   imports: [CommonModule, FavoriteButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="row" (click)="play()">
+    <div class="row">
       <div class="cover">
         <img [src]="cover || '/assets/default-cover.jpg'" (error)="onError($event)"/>
       </div>
@@ -48,17 +48,19 @@ export class FavoriteRowComponent {
   @Input() onRemove?: (id: string) => void;
   @Output() favoriteChanged = new EventEmitter<{ isFavorite: boolean, success: boolean }>();
 
-  private player = inject(AudioPlayerService);
+  private toast = inject(ToastService);
 
-  play(){
-    const track = { id: this.id, title: this.title, artist: this.artist, duration: this.duration || 0, cover: this.cover, url: '' };
-    this.player.playTrack(track, [track], 0);
-  }
+  // Se elimina player para no reproducir al dar click/quitar favorito
 
   onFavoriteChanged(event: { isFavorite: boolean, success: boolean }) {
     this.favoriteChanged.emit(event);
     if (!event.success) return;
-    if (event.isFavorite === false) this.onRemove?.(this.id);
+    if (event.isFavorite === false) {
+      this.onRemove?.(this.id);
+      this.toast.show('Eliminado de favoritos', 'success');
+    } else if (event.isFavorite === true) {
+      this.toast.show('Agregado a favoritos', 'success');
+    }
   }
 
   format(sec: number){

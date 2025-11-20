@@ -213,23 +213,6 @@ export class AudioPlayerService {
   }
 
   /**
-   * Verifica si el archivo existe antes de intentar reproducirlo
-   */
-  private async verifyAudioFile(audioPath: string): Promise<boolean> {
-    try {
-      const exists = await this.supabaseService.fileExists(audioPath);
-      if (!exists) {
-        console.error(`Audio file not found: ${audioPath}`);
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Error verifying audio file:', error);
-      return false;
-    }
-  }
-
-  /**
    * Reproduce una canción desde Supabase Storage
    */
   async playSong(song: Song, audioPath?: string, useSignedUrl: boolean = false) {
@@ -247,38 +230,18 @@ export class AudioPlayerService {
       this.currentSong.set(song);
 
       // Usar audioPath del parámetro o del objeto song
-      let pathToUse = audioPath || song.audioPath;
+      const pathToUse = audioPath || song.audioPath;
       if (!pathToUse) {
         throw new Error('No se especificó la ruta del audio');
-      }
-
-      // Limpiar la ruta - remover 'audio/' si ya está en el path
-      if (pathToUse.startsWith('audio/')) {
-        pathToUse = pathToUse.substring(6);
-      }
-      
-      // Asegurar que la ruta tenga el formato correcto
-      const finalPath = `audio/${pathToUse.replace(/^\/+/, '')}`;
-      
-      console.log('Processing audio path:', {
-        original: audioPath || song.audioPath,
-        cleaned: pathToUse,
-        final: finalPath
-      });
-
-      // Verificar si el archivo existe
-      const exists = await this.verifyAudioFile(finalPath);
-      if (!exists) {
-        throw new Error(`Archivo de audio no encontrado: ${finalPath}`);
       }
 
       // Obtener URL del audio desde Supabase
       let audioUrl: string;
       
       if (useSignedUrl || song.requiresSignedUrl) {
-        audioUrl = await this.supabaseService.getSignedAudioUrl(finalPath);
+        audioUrl = await this.supabaseService.getSignedAudioUrl(pathToUse);
       } else {
-        audioUrl = this.supabaseService.getPublicAudioUrl(finalPath);
+        audioUrl = this.supabaseService.getPublicAudioUrl(pathToUse);
       }
 
       console.log('Loading audio from URL:', audioUrl);
@@ -358,7 +321,7 @@ export class AudioPlayerService {
         artist: track.artist,
         duration: this.formatTimeFromSeconds(track.duration || 0),
         cover: track.cover,
-        audioPath: track.url || track.audioPath || `${track.id}.mp3`,
+        audioPath: track.url || track.audioPath || track.id,
         requiresSignedUrl: false
       };
       

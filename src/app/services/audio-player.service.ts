@@ -32,6 +32,7 @@ export class AudioPlayerService {
   private maxRetries = 3;
   private isInitialized = false;
   private currentPlaylist: any[] = [];
+  private autoPlayNext = false;
 
   constructor(
     private supabaseService: SupabaseService,
@@ -120,13 +121,17 @@ export class AudioPlayerService {
       });
     });
 
-    // Canción terminada
+    // Canción terminada - auto-reproducir siguiente si hay cola
     this.audio.addEventListener('ended', () => {
       this.ngZone.run(() => {
         this.isPlaying.set(false);
         this.progress.set(100);
-        // Opcional: Auto-reproducir siguiente canción
-        // this.playNext();
+        
+        // Auto-reproducir siguiente canción si está habilitado
+        if (this.autoPlayNext && this.hasNext()) {
+          console.log('Auto-playing next song in queue');
+          this.playNext();
+        }
       });
     });
 
@@ -208,6 +213,23 @@ export class AudioPlayerService {
   }
 
   /**
+   * Verifica si el archivo existe antes de intentar reproducirlo
+   */
+  private async verifyAudioFile(audioPath: string): Promise<boolean> {
+    try {
+      const exists = await this.supabaseService.fileExists(audioPath);
+      if (!exists) {
+        console.error(`Audio file not found: ${audioPath}`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error verifying audio file:', error);
+      return false;
+    }
+  }
+
+  /**
    * Reproduce una canción desde Supabase Storage
    */
   async playSong(song: Song, audioPath?: string, useSignedUrl: boolean = false) {
@@ -225,18 +247,38 @@ export class AudioPlayerService {
       this.currentSong.set(song);
 
       // Usar audioPath del parámetro o del objeto song
-      const pathToUse = audioPath || song.audioPath;
+      let pathToUse = audioPath || song.audioPath;
       if (!pathToUse) {
         throw new Error('No se especificó la ruta del audio');
+      }
+
+      // Limpiar la ruta - remover 'audio/' si ya está en el path
+      if (pathToUse.startsWith('audio/')) {
+        pathToUse = pathToUse.substring(6);
+      }
+      
+      // Asegurar que la ruta tenga el formato correcto
+      const finalPath = `audio/${pathToUse.replace(/^\/+/, '')}`;
+      
+      console.log('Processing audio path:', {
+        original: audioPath || song.audioPath,
+        cleaned: pathToUse,
+        final: finalPath
+      });
+
+      // Verificar si el archivo existe
+      const exists = await this.verifyAudioFile(finalPath);
+      if (!exists) {
+        throw new Error(`Archivo de audio no encontrado: ${finalPath}`);
       }
 
       // Obtener URL del audio desde Supabase
       let audioUrl: string;
       
       if (useSignedUrl || song.requiresSignedUrl) {
-        audioUrl = await this.supabaseService.getSignedAudioUrl(pathToUse);
+        audioUrl = await this.supabaseService.getSignedAudioUrl(finalPath);
       } else {
-        audioUrl = this.supabaseService.getPublicAudioUrl(pathToUse);
+        audioUrl = this.supabaseService.getPublicAudioUrl(finalPath);
       }
 
       console.log('Loading audio from URL:', audioUrl);
@@ -316,7 +358,7 @@ export class AudioPlayerService {
         artist: track.artist,
         duration: this.formatTimeFromSeconds(track.duration || 0),
         cover: track.cover,
-        audioPath: track.url || track.audioPath || `audio/${track.id}.mp3`,
+        audioPath: track.url || track.audioPath || `${track.id}.mp3`,
         requiresSignedUrl: false
       };
       
@@ -325,6 +367,99 @@ export class AudioPlayerService {
       console.error('Error in playTrack:', error);
       this.handleError('Error al reproducir la canción', error);
     }
+  }
+
+  /**
+   * Reproduce toda la lista de reproducción desde el inicio
+   */
+  async playAll(playlist: any[], startIndex: number = 0) {
+    if (!playlist || playlist.length === 0) {
+      console.warn('No hay canciones en la lista de reproducción');
+      return;
+    }
+
+    try {
+      this.currentPlaylist = playlist;
+      this.currentIndex.set(startIndex);
+      this.autoPlayNext = true; // Habilitar auto-play
+      
+      console.log('Playing all songs from playlist:', {
+        total: playlist.length,
+        startIndex: startIndex
+      });
+      
+      // Reproducir la primera canción (o la del índice especificado)
+      await this.playTrack(playlist[startIndex], playlist, startIndex);
+    } catch (error) {
+      console.error('Error playing all songs:', error);
+      this.handleError('Error al reproducir la lista', error);
+    }
+  }
+
+  /**
+   * Reproduce la siguiente canción en la cola
+   */
+  async playNext() {
+    if (!this.hasNext()) {
+      console.log('No more songs in queue');
+      this.autoPlayNext = false;
+      return;
+    }
+
+    const nextIndex = this.currentIndex() + 1;
+    this.currentIndex.set(nextIndex);
+    
+    const nextTrack = this.currentPlaylist[nextIndex];
+    console.log('Playing next song:', nextTrack?.title, 'at index', nextIndex);
+    
+    await this.playTrack(nextTrack, this.currentPlaylist, nextIndex);
+  }
+
+  /**
+   * Reproduce la canción anterior en la cola
+   */
+  async playPrevious() {
+    if (!this.hasPrevious()) {
+      console.log('Already at first song');
+      return;
+    }
+
+    const prevIndex = this.currentIndex() - 1;
+    this.currentIndex.set(prevIndex);
+    
+    const prevTrack = this.currentPlaylist[prevIndex];
+    console.log('Playing previous song:', prevTrack?.title, 'at index', prevIndex);
+    
+    await this.playTrack(prevTrack, this.currentPlaylist, prevIndex);
+  }
+
+  /**
+   * Verifica si hay una canción siguiente
+   */
+  hasNext(): boolean {
+    return this.currentPlaylist.length > 0 && 
+           this.currentIndex() < this.currentPlaylist.length - 1;
+  }
+
+  /**
+   * Verifica si hay una canción anterior
+   */
+  hasPrevious(): boolean {
+    return this.currentPlaylist.length > 0 && this.currentIndex() > 0;
+  }
+
+  /**
+   * Detiene el auto-play de canciones
+   */
+  stopAutoPlay() {
+    this.autoPlayNext = false;
+  }
+
+  /**
+   * Habilita el auto-play de canciones
+   */
+  enableAutoPlay() {
+    this.autoPlayNext = true;
   }
 
   /**
@@ -396,6 +531,7 @@ export class AudioPlayerService {
       this.currentTime.set(0);
       this.progress.set(0);
       this.isPlaying.set(false);
+      this.autoPlayNext = false;
     }
   }
 
@@ -509,7 +645,11 @@ export class AudioPlayerService {
       currentTime: this.formattedCurrentTime(),
       duration: this.formattedDuration(),
       volume: this.volume(),
-      isMuted: this.isMuted()
+      isMuted: this.isMuted(),
+      currentIndex: this.currentIndex(),
+      playlistLength: this.currentPlaylist.length,
+      hasNext: this.hasNext(),
+      hasPrevious: this.hasPrevious()
     };
   }
 
@@ -527,5 +667,6 @@ export class AudioPlayerService {
     this.lastPlayedUrl = '';
     this.retryCount = 0;
     this.currentPlaylist = [];
+    this.autoPlayNext = false;
   }
 }
